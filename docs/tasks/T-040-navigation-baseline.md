@@ -8,10 +8,10 @@ Topic/Agent 중심 UX를 구현하기 전에 Main 화면과 navigation 책임을
 - Status: Not Ready
 - Owner: Unassigned
 - Branch: docs/T-040-navigation-baseline
-- Depends on: T-020-architecture-baseline
-- Blocked by: 아키텍처 baseline 미완료
-- Ready criteria: T-020이 Done
-- Can run in parallel with: T-030-data-model-audit, T-050-permission-and-manifest-baseline
+- Depends on: T-020-architecture-baseline, T-030-data-model-audit
+- Blocked by: 모델 감사 미완료
+- Ready criteria: T-020과 T-030이 Done
+- Can run in parallel with: none
 - Cannot run with: T-200-home-ux-redesign, T-210-data-list-filter-selection, T-300-topic-create-flow
 
 ## 수정 허용 파일

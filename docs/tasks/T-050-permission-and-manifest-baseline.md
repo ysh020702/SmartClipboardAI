@@ -8,10 +8,10 @@ Share Target, Tile, MediaStore, SAF에 필요한 권한과 Manifest 변경 기�
 - Status: Not Ready
 - Owner: Unassigned
 - Branch: docs/T-050-permission-and-manifest-baseline
-- Depends on: T-020-architecture-baseline
-- Blocked by: 아키텍처 baseline 미완료
-- Ready criteria: T-020이 Done
-- Can run in parallel with: T-030-data-model-audit, T-040-navigation-baseline
+- Depends on: T-020-architecture-baseline, T-030-data-model-audit
+- Blocked by: 모델 감사 미완료
+- Ready criteria: T-020과 T-030이 Done
+- Can run in parallel with: none
 - Cannot run with: T-100-share-target-flow, T-110-quick-tile-flow, T-120-media-store-batch-query
 
 ## 수정 허용 파일

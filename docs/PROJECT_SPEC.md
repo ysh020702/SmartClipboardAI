@@ -39,6 +39,16 @@ SmartClipboardAI는 사용자가 일상적으로 모으는 사진, 스크린샷,
 - Samsung Notes는 공유 초안 전달, Calendar는 insert intent 초안 전달로 시작합니다.
 - 기존 수집 구현은 가능한 한 재사용합니다.
 
+## MVP 구현 우선순위
+
+1. 협업 기준 문서와 현재 코드 감사 결과를 확정합니다.
+2. 공통 모델, DB, Repository, Navigation, Permission/Manifest baseline을 먼저 정리합니다.
+3. 데이터 수집 흐름은 Share, Tile, MediaStore, SAF로 나눠 기능별 브랜치에서 진행합니다.
+4. UX는 Topic/Agent 초안 경험을 중심에 두고, 기존 `MainScreen`은 참고하되 화면 단위로 다시 나눕니다.
+5. Gemini, OCR, OG 추출, cluster manager는 `DataItem` metadata 방향과 저장 흐름이 확정된 뒤 연결합니다.
+
+현재 프로젝트 오너 확인 기준으로 `T-000-current-code-audit`와 `T-010-agents-and-docs-setup`은 완료된 기준 문서로 사용합니다. 다음 문서 작업은 `T-020-architecture-baseline`입니다.
+
 ## 이번 버전에서 하지 않을 것
 
 - 백그라운드 클립보드 지속 감시

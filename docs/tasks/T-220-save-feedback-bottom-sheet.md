@@ -5,11 +5,11 @@
 Share Target과 Quick Settings Tile 저장 피드백을 작고 일관된 바텀시트/투명 Activity UX로 개선합니다.
 
 ## 작업 상태
-- Status: Not Ready
+- Status: Ready
 - Owner: Unassigned
 - Branch: feat/T-220-save-feedback-bottom-sheet
 - Depends on: T-010-agents-and-docs-setup
-- Blocked by: 문서 기준 리뷰 미완료
+- Blocked by: none
 - Ready criteria: T-010이 Done
 - Can run in parallel with: T-200-home-ux-redesign, T-210-data-list-filter-selection
 - Cannot run with: T-100-share-target-flow, T-110-quick-tile-flow

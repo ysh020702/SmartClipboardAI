@@ -18,7 +18,9 @@
 
 - `app/src/main/java/com/samsung/smartclipboard/domain/model/DataItem.kt`
 - `app/src/main/java/com/samsung/smartclipboard/data/model/DataItemEntity.kt`
+- `app/src/main/java/com/samsung/smartclipboard/data/source/local/DataItemDao.kt`
 - `app/src/main/java/com/samsung/smartclipboard/data/source/local/SmartClipboardDatabase.kt`
+- `app/src/main/java/com/samsung/smartclipboard/di/AppModule.kt`
 - `app/src/main/java/com/samsung/smartclipboard/data/repository/DataRepositoryImpl.kt`
 - 관련 테스트 파일
 
@@ -30,9 +32,10 @@
 
 ## 구현 내용
 
-- `clusterId`, `clusterLabel`, `clusterConfidence` nullable 필드를 추가합니다.
+- `clusterId`, `clusterLabel`, `clusterScore`, `clusterUpdatedAt` nullable 필드를 추가합니다.
 - Room database version과 migration을 추가합니다.
 - entity/domain mapper를 갱신합니다.
+- cluster 정보 갱신용 DAO query를 추가합니다.
 
 ## 체크리스트
 - [ ] 코드 읽기

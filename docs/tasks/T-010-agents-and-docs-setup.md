@@ -5,11 +5,11 @@
 여러 개발자가 GitHub에서 병렬 협업할 수 있도록 AGENTS, 계획 문서, task 문서, PR 템플릿을 정리합니다.
 
 ## 작업 상태
-- Status: In Progress
+- Status: Done
 - Owner: Codex
-- Branch: docs/T-010-agents-and-docs-setup
+- Branch: codex-T-010-agents-and-docs-setup
 - Depends on: none
-- Blocked by: 프로젝트 오너 리뷰
+- Blocked by: none
 - Ready criteria: 사용자 요청으로 문서 생성 허용
 - Can run in parallel with: T-000-current-code-audit
 - Cannot run with: 기능 구현 task
@@ -42,14 +42,14 @@
 - PR 템플릿을 추가합니다.
 
 ## 체크리스트
-- [ ] 코드 읽기
-- [ ] 관련 문서 확인
-- [ ] 선행 task 완료 여부 확인
-- [ ] 구현
-- [ ] 빌드 확인
-- [ ] 테스트/수동 확인
-- [ ] 변경 요약 작성
-- [ ] PR 작성
+- [x] 코드 읽기
+- [x] 관련 문서 확인
+- [x] 선행 task 완료 여부 확인
+- [x] 구현
+- [x] 빌드 확인 - 문서 전용 작업이라 Android 빌드는 실행하지 않음
+- [x] 테스트/수동 확인
+- [x] 변경 요약 작성
+- [x] PR 작성 - 오너가 현재 문서를 확인했으며, 별도 PR 생성은 사용자 요청 전까지 보류
 
 ## 완료 기준
 

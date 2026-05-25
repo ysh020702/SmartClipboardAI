@@ -8,10 +8,10 @@
 
 - task id: `T-000-current-code-audit`
 - 작업명: 현재 코드 감사
-- Status: `Ready`
-- Owner: `Unassigned`
+- Status: `Done`
+- Owner: `Codex`
 - 목적: 기존 구현 중 유지/재사용/수정/제거 후보를 파일 단위로 정리합니다.
-- 담당 브랜치명: `docs/T-000-current-code-audit`
+- 담당 브랜치명: `codex-T-000-current-code-audit`
 - 예상 수정 파일: `docs/ARCHITECTURE.md`, `docs/WORK_LOG.md`, `docs/tasks/T-000-current-code-audit.md`
 - 선행 task: 없음
 - Blocked by: 없음
@@ -30,13 +30,13 @@
 
 - task id: `T-010-agents-and-docs-setup`
 - 작업명: AGENTS와 협업 문서 체계 정리
-- Status: `In Progress`
+- Status: `Done`
 - Owner: `Codex`
 - 목적: 병렬 협업을 위한 기준 문서와 task 문서를 생성합니다.
-- 담당 브랜치명: `docs/T-010-agents-and-docs-setup`
+- 담당 브랜치명: `codex-T-010-agents-and-docs-setup`
 - 예상 수정 파일: `AGENTS.md`, `docs/*.md`, `docs/tasks/*.md`, `.github/pull_request_template.md`
 - 선행 task: 없음
-- Blocked by: 프로젝트 오너 리뷰
+- Blocked by: 없음
 - Ready criteria: 사용자 요청으로 승인됨
 - 병렬 진행 가능 여부: 제한적 가능
 - Can run in parallel with: `T-000-current-code-audit`
@@ -52,14 +52,14 @@
 
 - task id: `T-020-architecture-baseline`
 - 작업명: 아키텍처 baseline 확정
-- Status: `Not Ready`
-- Owner: `Unassigned`
+- Status: `Done`
+- Owner: `Codex`
 - 목적: MVVM, Repository, DB, Navigation, Theme 수정 순서를 확정합니다.
-- 담당 브랜치명: `docs/T-020-architecture-baseline`
+- 담당 브랜치명: `codex-T-020-architecture-baseline`
 - 예상 수정 파일: `docs/ARCHITECTURE.md`, `docs/PROJECT_SPEC.md`
 - 선행 task: `T-000-current-code-audit`, `T-010-agents-and-docs-setup`
-- Blocked by: 문서 체계 승인 및 코드 감사 결과
-- Ready criteria: 선행 task가 Done
+- Blocked by: 없음
+- Ready criteria: `T-000`, `T-010` Done
 - 병렬 진행 가능 여부: 제한적 가능
 - Can run in parallel with: 없음
 - Cannot run with: DB/Repository/Navigation 구현 task
@@ -76,17 +76,17 @@
 
 - task id: `T-030-data-model-audit`
 - 작업명: DataItem/Topic 모델 감사
-- Status: `Not Ready`
-- Owner: `Unassigned`
+- Status: `In Progress`
+- Owner: `Codex`
 - 목적: DataItem cluster 필드 추가 전 usage와 migration 영향 범위를 정리합니다.
-- 담당 브랜치명: `docs/T-030-data-model-audit`
-- 예상 수정 파일: `docs/ARCHITECTURE.md`, `docs/tasks/T-030-data-model-audit.md`
+- 담당 브랜치명: `codex-T-030-data-model-audit`
+- 예상 수정 파일: `docs/ARCHITECTURE.md`, `docs/WORK_LOG.md`, `docs/tasks/T-030-data-model-audit.md`
 - 선행 task: `T-020-architecture-baseline`
-- Blocked by: 아키텍처 baseline 미확정
+- Blocked by: 없음
 - Ready criteria: `T-020` Done
 - 병렬 진행 가능 여부: 불가
 - Can run in parallel with: 없음
-- Cannot run with: `T-040-navigation-baseline`, DB 구현 task
+- Cannot run with: `T-040-navigation-baseline`, `T-050-permission-and-manifest-baseline`, DB 구현 task
 - 충돌 가능성이 있는 파일: 모델/DB 문서
 - 완료 기준: 모델 변경 영향 범위가 문서화됩니다.
 - 검증 방법: `DataItem`, `DataItemEntity`, DAO, Repository usage 검색 결과 기록
@@ -103,11 +103,11 @@
 - 목적: Topic/Agent 중심 화면 구조를 구현 전 문서로 확정합니다.
 - 담당 브랜치명: `docs/T-040-navigation-baseline`
 - 예상 수정 파일: `docs/UX_FLOW.md`, `docs/ARCHITECTURE.md`
-- 선행 task: `T-020-architecture-baseline`
-- Blocked by: 아키텍처 baseline 미확정
-- Ready criteria: `T-020` Done
+- 선행 task: `T-020-architecture-baseline`, `T-030-data-model-audit`
+- Blocked by: 모델 감사 미완료
+- Ready criteria: `T-020`, `T-030` Done
 - 병렬 진행 가능 여부: 제한적 가능
-- Can run in parallel with: `T-030-data-model-audit`
+- Can run in parallel with: 없음
 - Cannot run with: `T-200-home-ux-redesign`, `T-300-topic-create-flow`
 - 충돌 가능성이 있는 파일: `presentation/main` 관련 문서
 - 완료 기준: 화면 단위와 navigation 책임이 정리됩니다.
@@ -125,11 +125,11 @@
 - 목적: Share, Tile, MediaStore, SAF에 필요한 Manifest/권한 변경을 정리합니다.
 - 담당 브랜치명: `docs/T-050-permission-and-manifest-baseline`
 - 예상 수정 파일: `docs/DATA_COLLECTION_STRATEGY.md`, `docs/ARCHITECTURE.md`
-- 선행 task: `T-020-architecture-baseline`
-- Blocked by: 아키텍처 baseline 미확정
-- Ready criteria: `T-020` Done
+- 선행 task: `T-020-architecture-baseline`, `T-030-data-model-audit`
+- Blocked by: 모델 감사 미완료
+- Ready criteria: `T-020`, `T-030` Done
 - 병렬 진행 가능 여부: 제한적 가능
-- Can run in parallel with: `T-030-data-model-audit`
+- Can run in parallel with: 없음
 - Cannot run with: `T-100-share-target-flow`, `T-110-quick-tile-flow`, `T-120-media-store-batch-query`
 - 충돌 가능성이 있는 파일: `AndroidManifest.xml` 관련 문서
 - 완료 기준: 권한과 Manifest 변경 승인 기준이 명확합니다.
@@ -368,13 +368,13 @@
 
 - task id: `T-220-save-feedback-bottom-sheet`
 - 작업명: 저장 피드백 바텀시트 UX
-- Status: `Not Ready`
+- Status: `Ready`
 - Owner: `Unassigned`
 - 목적: Share/Tile 저장 피드백을 작고 일관된 UI로 개선합니다.
 - 담당 브랜치명: `feat/T-220-save-feedback-bottom-sheet`
 - 예상 수정 파일: `presentation/share/`, `presentation/clipboard/`
 - 선행 task: `T-010-agents-and-docs-setup`
-- Blocked by: 문서 기준 리뷰
+- Blocked by: 없음
 - Ready criteria: `T-010` Done
 - 병렬 진행 가능 여부: 가능
 - Can run in parallel with: `T-200-home-ux-redesign`, `T-210-data-list-filter-selection`
@@ -550,4 +550,4 @@
 
 ## 현재 추천 가능한 task
 
-현재 `Ready` 상태는 `T-000-current-code-audit`뿐입니다. `T-010-agents-and-docs-setup`은 현재 문서 작성 작업으로 `In Progress`이며, 구현 task는 모두 선행 문서/구조 task가 끝나기 전까지 시작하면 안 됩니다.
+현재 `T-030-data-model-audit`을 문서 작업으로 진행 중입니다. `Ready` 상태로 열린 작업은 `T-220-save-feedback-bottom-sheet`이지만, 공통 모델 감사가 끝나기 전에는 구현 task 착수를 보류하는 것을 권장합니다. `T-040`, `T-050`, `T-140`은 `T-030`이 Done이 되기 전까지 시작하면 안 됩니다.

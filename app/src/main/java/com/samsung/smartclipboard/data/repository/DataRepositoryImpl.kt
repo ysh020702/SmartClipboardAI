@@ -1,17 +1,14 @@
 package com.samsung.smartclipboard.data.repository
 
-import com.samsung.smartclipboard.data.model.AiProposalEntity
 import com.samsung.smartclipboard.data.model.DataItemEntity
 import com.samsung.smartclipboard.data.model.TopicActionEntity
 import com.samsung.smartclipboard.data.model.TopicAnalysisEntity
 import com.samsung.smartclipboard.data.model.TopicEntity
 import com.samsung.smartclipboard.data.model.TopicItemCrossRefEntity
-import com.samsung.smartclipboard.data.source.local.AiProposalDao
 import com.samsung.smartclipboard.data.source.local.DataItemDao
 import com.samsung.smartclipboard.data.source.local.TopicDao
 import com.samsung.smartclipboard.data.source.local.TopicSummaryRow
-import com.samsung.smartclipboard.domain.ai.AiProposalGenerator
-import com.samsung.smartclipboard.domain.model.AiProposal
+import com.samsung.smartclipboard.domain.ai.TopicAgent
 import com.samsung.smartclipboard.domain.model.DataItem
 import com.samsung.smartclipboard.domain.model.DataItemType
 import com.samsung.smartclipboard.domain.model.Topic
@@ -27,19 +24,12 @@ import javax.inject.Inject
 
 class DataRepositoryImpl @Inject constructor(
     private val dataItemDao: DataItemDao,
-    private val aiProposalDao: AiProposalDao,
     private val topicDao: TopicDao,
-    private val aiProposalGenerator: AiProposalGenerator
+    private val topicAgent: TopicAgent
 ) : DataRepository {
 
     override fun observeItems(): Flow<List<DataItem>> {
         return dataItemDao.observeAll().map { entities ->
-            entities.map { it.toDomain() }
-        }
-    }
-
-    override fun observeProposals(): Flow<List<AiProposal>> {
-        return aiProposalDao.observeAll().map { entities ->
             entities.map { it.toDomain() }
         }
     }
@@ -137,7 +127,6 @@ class DataRepositoryImpl @Inject constructor(
 
     override suspend fun clearAll() {
         dataItemDao.clearAll()
-        aiProposalDao.clearAll()
     }
 
     override suspend fun addItemsToTopic(title: String, itemIds: List<Long>, addedBy: String): Long {
@@ -168,32 +157,61 @@ class DataRepositoryImpl @Inject constructor(
         return topicId
     }
 
-    override suspend fun runTopicAnalysis(topicId: Long) {
+    override suspend fun runTopicAnalysis(topicId: Long): Boolean {
         val items = topicDao.observeItemsForTopic(topicId).first().map { it.toDomain() }
-        if (items.isEmpty()) return
+        if (items.isEmpty()) return false
+
+        val topicRow = topicDao.getTopicById(topicId) ?: return false
+        val topic = Topic(
+            id = topicRow.id,
+            title = topicRow.title,
+            itemCount = items.size,
+            createdAt = topicRow.createdAt,
+            updatedAt = topicRow.updatedAt
+        )
 
         val now = System.currentTimeMillis()
-        val summary = buildTopicSummary(items)
-        val keyPoints = buildTopicKeyPoints(items)
-        val analysisId = topicDao.insertAnalysis(
-            TopicAnalysisEntity(
-                topicId = topicId,
-                summary = summary,
-                keyPoints = keyPoints.joinToString("\n"),
-                sourceItemIds = items.map { it.id }.joinToString(","),
-                createdAt = now
-            )
-        )
 
-        val actions = buildTopicActions(
-            topicId = topicId,
-            analysisResultId = analysisId,
-            items = items,
-            summary = summary,
-            createdAt = now
-        )
-        topicDao.insertActions(actions)
+        val result = topicAgent.analyze(topic, items)
+
+        var success = false
+
+        result.onSuccess { agentResult ->
+            val analysisId = topicDao.insertAnalysis(
+                TopicAnalysisEntity(
+                    topicId = topicId,
+                    summary = agentResult.summary,
+                    keyPoints = agentResult.keyPoints.joinToString("\n"),
+                    sourceItemIds = agentResult.sourceItemIds.joinToString(","),
+                    createdAt = now
+                )
+            )
+
+            val actionEntities = agentResult.actions.map { draft ->
+                TopicActionEntity(
+                    topicId = topicId,
+                    analysisResultId = analysisId,
+                    type = draft.type.name,
+                    title = draft.title,
+                    body = draft.body,
+                    status = TopicActionStatus.DRAFT.name,
+                    editablePayload = draft.payload,
+                    createdAt = now,
+                    updatedAt = now
+                )
+            }
+            if (actionEntities.isNotEmpty()) {
+                topicDao.insertActions(actionEntities)
+            }
+            success = true
+        }
+
+        result.onFailure { exception ->
+            android.util.Log.e("DataRepository", "TopicAgent 분석 실패: topicId=$topicId", exception)
+        }
+
         topicDao.updateTopicTimestamp(topicId, now)
+        return success
     }
 
     override suspend fun updateTopicActionDraft(actionId: Long, title: String, body: String) {
@@ -204,32 +222,6 @@ class DataRepositoryImpl @Inject constructor(
             status = TopicActionStatus.EDITED.name,
             updatedAt = System.currentTimeMillis()
         )
-    }
-
-    override suspend fun generateProposals() {
-        val items = dataItemDao.observeAll().first().map { it.toDomain() }
-        val proposals = aiProposalGenerator.generateProposals(items)
-
-        if (proposals.isNotEmpty()) {
-            aiProposalDao.clearAll() // Replace old proposals
-            val now = System.currentTimeMillis()
-            for (proposal in proposals) {
-                aiProposalDao.insert(
-                    AiProposalEntity(
-                        title = proposal.title,
-                        description = proposal.description,
-                        confidence = proposal.confidence,
-                        category = proposal.category,
-                        itemIds = proposal.itemIds.joinToString(","),
-                        createdAt = now
-                    )
-                )
-            }
-        }
-    }
-
-    override suspend fun clearProposals() {
-        aiProposalDao.clearAll()
     }
 
     private fun DataItemEntity.toDomain(): DataItem {
@@ -245,23 +237,6 @@ class DataRepositoryImpl @Inject constructor(
             title = title,
             source = source,
             mimeType = mimeType,
-            createdAt = createdAt
-        )
-    }
-
-    private fun AiProposalEntity.toDomain(): AiProposal {
-        val ids = try {
-            itemIds.split(",").mapNotNull { it.trim().toLongOrNull() }
-        } catch (e: Exception) {
-            emptyList()
-        }
-        return AiProposal(
-            id = id,
-            title = title,
-            description = description,
-            confidence = confidence,
-            category = category,
-            itemIds = ids,
             createdAt = createdAt
         )
     }
@@ -302,78 +277,4 @@ class DataRepositoryImpl @Inject constructor(
         )
     }
 
-    private fun buildTopicSummary(items: List<DataItem>): String {
-        val typeCounts = DataItemType.entries
-            .associateWith { type -> items.count { it.type == type } }
-            .filterValues { it > 0 }
-            .map { (type, count) -> "${type.name.lowercase()}: $count" }
-            .joinToString(", ")
-        val preview = items.take(3).joinToString("\n") { "- ${it.title ?: it.content.take(80)}" }
-        return "선택된 ${items.size}개 데이터가 이 주제의 자료로 묶였습니다.\n$typeCounts\n\n대표 자료\n$preview"
-    }
-
-    private fun buildTopicKeyPoints(items: List<DataItem>): List<String> {
-        val points = mutableListOf<String>()
-        val links = items.count { it.type == DataItemType.LINK }
-        val screenshots = items.count { it.type == DataItemType.SCREENSHOT }
-        val texts = items.count { it.type == DataItemType.TEXT }
-        if (links > 0) points += "링크 ${links}개는 리서치/참고 자료 후보입니다."
-        if (screenshots > 0) points += "스크린샷 ${screenshots}개는 OCR과 이미지 분석이 필요합니다."
-        if (texts > 0) points += "메모 ${texts}개는 요약과 할 일 추출에 사용할 수 있습니다."
-        if (points.isEmpty()) points += "자료를 요약하고 다음 작업 후보를 만들 수 있습니다."
-        return points
-    }
-
-    private fun buildTopicActions(
-        topicId: Long,
-        analysisResultId: Long,
-        items: List<DataItem>,
-        summary: String,
-        createdAt: Long
-    ): List<TopicActionEntity> {
-        val actions = mutableListOf<TopicActionEntity>()
-        val hasDateCandidate = items.any { item ->
-            item.content.contains(Regex("\\d{1,2}:\\d{2}|\\d{4}[-/]\\d{1,2}[-/]\\d{1,2}|AM|PM|오전|오후", RegexOption.IGNORE_CASE))
-        }
-
-        actions += TopicActionEntity(
-            topicId = topicId,
-            analysisResultId = analysisResultId,
-            type = TopicActionType.SUMMARY.name,
-            title = "요약 문서 만들기",
-            body = summary,
-            status = TopicActionStatus.DRAFT.name,
-            editablePayload = null,
-            createdAt = createdAt,
-            updatedAt = createdAt
-        )
-
-        if (hasDateCandidate) {
-            actions += TopicActionEntity(
-                topicId = topicId,
-                analysisResultId = analysisResultId,
-                type = TopicActionType.CALENDAR.name,
-                title = "캘린더 일정 초안",
-                body = "선택한 자료에서 날짜/시간 후보가 발견되었습니다. 제목과 설명을 검토한 뒤 캘린더에 추가하세요.",
-                status = TopicActionStatus.DRAFT.name,
-                editablePayload = null,
-                createdAt = createdAt,
-                updatedAt = createdAt
-            )
-        }
-
-        actions += TopicActionEntity(
-            topicId = topicId,
-            analysisResultId = analysisResultId,
-            type = TopicActionType.TODO.name,
-            title = "다음 할 일 정리",
-            body = "자료를 검토하고 실행할 작업을 확정하세요.",
-            status = TopicActionStatus.DRAFT.name,
-            editablePayload = null,
-            createdAt = createdAt,
-            updatedAt = createdAt
-        )
-
-        return actions
-    }
 }

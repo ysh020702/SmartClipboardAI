@@ -32,7 +32,6 @@ class MainViewModel @Inject constructor(
 
     init {
         observeItems()
-        observeProposals()
         observeTopics()
         observeSelectedTopicDetails()
     }
@@ -60,14 +59,6 @@ class MainViewModel @Inject constructor(
                         isSelectionMode = current.isSelectionMode && items.isNotEmpty()
                     )
                 }
-            }
-        }
-    }
-
-    private fun observeProposals() {
-        viewModelScope.launch {
-            dataRepository.observeProposals().collect { proposals ->
-                _uiState.update { it.copy(proposals = proposals) }
             }
         }
     }
@@ -312,33 +303,6 @@ class MainViewModel @Inject constructor(
             is MainIntent.DismissMediaImportMessage -> {
                 _uiState.update { it.copy(mediaImportMessage = null) }
             }
-            is MainIntent.GenerateProposals -> {
-                if (_uiState.value.isGeneratingProposals) return
-                viewModelScope.launch {
-                    _uiState.update { it.copy(isGeneratingProposals = true, proposalMessage = null) }
-                    try {
-                        dataRepository.generateProposals()
-                        _uiState.update {
-                            it.copy(
-                                isGeneratingProposals = false,
-                                proposalMessage = "Proposals generated"
-                            )
-                        }
-                    } catch (e: Exception) {
-                        _uiState.update {
-                            it.copy(
-                                isGeneratingProposals = false,
-                                proposalMessage = "Failed to generate proposals"
-                            )
-                        }
-                    }
-                }
-            }
-            is MainIntent.DismissProposals -> {
-                viewModelScope.launch {
-                    dataRepository.clearProposals()
-                }
-            }
             // Selection and handoff
             is MainIntent.EnterSelectionMode -> {
                 _uiState.update {
@@ -468,7 +432,7 @@ class MainViewModel @Inject constructor(
                         )
                         // TODO(agent-pipeline): Replace the heuristic implementation in repository
                         // with a real Agent pipeline job queue and progress state.
-                        dataRepository.runTopicAnalysis(topicId)
+                        val success = dataRepository.runTopicAnalysis(topicId)
                         _selectedTopicId.value = topicId
                         _uiState.update {
                             it.copy(
@@ -480,7 +444,8 @@ class MainViewModel @Inject constructor(
                                 isRunningTopicAnalysis = false,
                                 isSelectionMode = false,
                                 selectedItemIds = emptySet(),
-                                snackbarMessage = "\"$topic\" 분석을 시작했어요"
+                                snackbarMessage = if (success) "\"$topic\" 분석을 완료했어요"
+                                    else "\"$topic\" 분석에 실패했어요. 네트워크 연결을 확인해 주세요."
                             )
                         }
                     } catch (e: Exception) {
@@ -513,12 +478,13 @@ class MainViewModel @Inject constructor(
                 viewModelScope.launch {
                     _uiState.update { it.copy(isRunningTopicAnalysis = true) }
                     try {
-                        dataRepository.runTopicAnalysis(topicId)
+                        val success = dataRepository.runTopicAnalysis(topicId)
                         _uiState.update {
                             it.copy(
                                 selectedTopicTab = TopicDetailTab.ANALYSIS,
                                 isRunningTopicAnalysis = false,
-                                snackbarMessage = "분석 결과를 업데이트했어요"
+                                snackbarMessage = if (success) "분석 결과를 업데이트했어요"
+                                    else "분석에 실패했어요. 네트워크 연결을 확인해 주세요."
                             )
                         }
                     } catch (e: Exception) {
@@ -561,25 +527,6 @@ class MainViewModel @Inject constructor(
                             handoffMessage = intent.message
                         )
                     }
-                }
-            }
-            is MainIntent.UseProposalForHandoff -> {
-                val existingIds = _uiState.value.items.map { it.id }.toSet()
-                val validIds = intent.itemIds.filter { it in existingIds }
-                if (validIds.isEmpty()) {
-                    _uiState.update {
-                        it.copy(snackbarMessage = "No items available for this suggestion")
-                    }
-                    return
-                }
-                _uiState.update {
-                    it.copy(
-                        screenMode = MainScreenMode.DATA,
-                        isSelectionMode = true,
-                        selectedItemIds = validIds.toSet(),
-                        showHandoffSheet = false,
-                        snackbarMessage = "추천 항목 ${validIds.size}개를 선택했어요"
-                    )
                 }
             }
         }

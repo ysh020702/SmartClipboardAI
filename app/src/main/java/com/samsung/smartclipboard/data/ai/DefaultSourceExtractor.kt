@@ -1,4 +1,4 @@
-package com.samsung.smartclipboard
+package com.samsung.smartclipboard.data.ai
 
 import android.content.Context
 import android.net.Uri
@@ -6,16 +6,24 @@ import com.google.android.gms.tasks.Tasks
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.korean.KoreanTextRecognizerOptions
+import com.samsung.smartclipboard.domain.ai.SourceExtractor
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jsoup.Jsoup
+import javax.inject.Inject
+import javax.inject.Singleton
 
-class SourceExtractor(private val context: Context) {
+@Singleton
+class DefaultSourceExtractor @Inject constructor(
+    @ApplicationContext private val context: Context
+) : SourceExtractor {
+
     private val ocrRecognizer = TextRecognition.getClient(
         KoreanTextRecognizerOptions.Builder().build()
     )
 
-    suspend fun extractFromOcr(uriString: String): String = withContext(Dispatchers.IO) {
+    override suspend fun extractFromOcr(uriString: String): String = withContext(Dispatchers.IO) {
         return@withContext try {
             val uri = Uri.parse(uriString)
             val image = InputImage.fromFilePath(context, uri)
@@ -27,7 +35,7 @@ class SourceExtractor(private val context: Context) {
         }
     }
 
-    suspend fun extractFromUrl(url: String): String = withContext(Dispatchers.IO) {
+    override suspend fun extractFromUrl(url: String): String = withContext(Dispatchers.IO) {
         return@withContext try {
             val document = Jsoup.connect(url)
                 .userAgent("Mozilla/5.0")

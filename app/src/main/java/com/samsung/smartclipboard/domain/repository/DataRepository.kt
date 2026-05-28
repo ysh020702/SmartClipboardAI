@@ -1,6 +1,5 @@
 package com.samsung.smartclipboard.domain.repository
 
-import com.samsung.smartclipboard.domain.model.AiProposal
 import com.samsung.smartclipboard.domain.model.DataItem
 import com.samsung.smartclipboard.domain.model.TopicAction
 import com.samsung.smartclipboard.domain.model.Topic
@@ -9,7 +8,6 @@ import kotlinx.coroutines.flow.Flow
 
 interface DataRepository {
     fun observeItems(): Flow<List<DataItem>>
-    fun observeProposals(): Flow<List<AiProposal>>
     fun observeTopics(): Flow<List<Topic>>
     fun observeTopicItems(topicId: Long): Flow<List<DataItem>>
     fun observeTopicAnalysis(topicId: Long): Flow<List<TopicAnalysis>>
@@ -28,8 +26,6 @@ interface DataRepository {
     suspend fun deleteItem(id: Long)
     suspend fun clearAll()
     suspend fun addItemsToTopic(title: String, itemIds: List<Long>, addedBy: String = "USER"): Long
-    suspend fun runTopicAnalysis(topicId: Long)
+    suspend fun runTopicAnalysis(topicId: Long): Boolean
     suspend fun updateTopicActionDraft(actionId: Long, title: String, body: String)
-    suspend fun generateProposals()
-    suspend fun clearProposals()
 }

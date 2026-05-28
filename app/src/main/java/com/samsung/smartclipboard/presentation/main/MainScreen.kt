@@ -62,7 +62,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
-import com.samsung.smartclipboard.domain.model.AiProposal
 import com.samsung.smartclipboard.domain.model.DataItem
 import com.samsung.smartclipboard.domain.model.DataItemType
 import com.samsung.smartclipboard.domain.model.Topic
@@ -636,114 +635,31 @@ private fun RecommendationsSection(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = "추천 작업",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.weight(1f)
-                )
-                if (uiState.proposals.isNotEmpty()) {
-                    TextButton(onClick = { onIntent(MainIntent.DismissProposals) }) {
-                        Text("숨기기")
-                    }
-                }
-            }
+            Text(
+                text = "시작하기",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
 
             when {
-                uiState.isGeneratingProposals -> {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(18.dp),
-                            strokeWidth = 2.dp
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "수집 데이터를 살펴보는 중...",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.outline
-                        )
-                    }
-                }
-
-                uiState.proposals.isNotEmpty() -> {
-                    uiState.proposals.take(3).forEach { proposal ->
-                        ProposalCard(
-                            proposal = proposal,
-                            onUse = { onIntent(MainIntent.UseProposalForHandoff(proposal.itemIds)) }
-                        )
-                    }
-                }
-
                 uiState.items.size >= 2 -> {
                     Text(
-                        text = "수집된 데이터에서 묶을 만한 자료를 찾아볼 수 있어요.",
+                        text = "데이터를 선택해 Topic으로 만들고, AI가 분석과 액션 초안을 생성합니다.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.outline
                     )
-                    Button(onClick = { onIntent(MainIntent.GenerateProposals) }) {
-                        Text("추천 만들기")
+                    OutlinedButton(onClick = { onIntent(MainIntent.OpenManualSelection) }) {
+                        Text("데이터 선택 → Topic 만들기")
                     }
                 }
 
                 else -> {
                     Text(
-                        text = "데이터가 조금 더 모이면 요약, 일정, 기존 작업 연결 후보를 제안합니다.",
+                        text = "데이터가 조금 더 모이면 Topic 생성과 AI 분석을 시작할 수 있어요.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.outline
                     )
-                }
-            }
-
-            uiState.proposalMessage?.let { message ->
-                Text(
-                    text = message,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.outline
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun ProposalCard(
-    proposal: AiProposal,
-    onUse: () -> Unit
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
-    ) {
-        Column(
-            modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            Text(
-                text = proposal.title,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                text = proposal.description,
-                style = MaterialTheme.typography.bodySmall,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = "${proposal.category} · ${proposal.itemIds.size}개 · ${
-                        "%.0f".format(proposal.confidence * 100)
-                    }%",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.outline,
-                    modifier = Modifier.weight(1f)
-                )
-                TextButton(onClick = onUse) {
-                    Text("검토")
                 }
             }
         }
@@ -897,22 +813,11 @@ private fun TasksHome(
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
-                    if (uiState.proposals.isEmpty()) {
-                        Text(
-                            text = "아직 검토할 후보가 없어요. 홈에서 추천을 만들거나 데이터를 더 모아보세요.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.outline
-                        )
-                    } else {
-                        uiState.proposals.take(4).forEach { proposal ->
-                            ProposalCard(
-                                proposal = proposal,
-                                onUse = {
-                                    onIntent(MainIntent.UseProposalForHandoff(proposal.itemIds))
-                                }
-                            )
-                        }
-                    }
+                    Text(
+                        text = "Topic을 생성하고 AI 분석을 실행하면 액션 초안이 여기에 표시됩니다.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.outline
+                    )
                 }
             }
         }

@@ -1,17 +1,24 @@
-package com.samsung.smartclipboard
+package com.samsung.smartclipboard.data.ai
 
+import com.samsung.smartclipboard.domain.ai.GeminiClient
+import com.samsung.smartclipboard.domain.ai.GeminiManager
+import com.samsung.smartclipboard.domain.model.InputType
+import com.samsung.smartclipboard.domain.model.LlmStructuredOutput
 import kotlinx.serialization.json.Json
+import javax.inject.Inject
+import javax.inject.Singleton
 
-class GeminiClient {
+@Singleton
+class DefaultGeminiClient @Inject constructor(
+    private val model: GeminiManager
+) : GeminiClient {
 
-    private val model = GeminiManager()
     private val json = Json {
         ignoreUnknownKeys = true
         isLenient = true
     }
 
-    suspend fun refineText(type: InputType, text: String): LlmStructuredOutput {
-
+    override suspend fun refineText(type: InputType, text: String): LlmStructuredOutput {
         val contextGuide = when (type) {
             InputType.OCR -> "OCR 결과이므로 깨진 문장 복원"
             InputType.URL -> "웹페이지 노이즈 제거"

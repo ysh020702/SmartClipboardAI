@@ -1,6 +1,5 @@
 package com.samsung.smartclipboard.presentation.main
 
-import com.samsung.smartclipboard.domain.model.AiProposal
 import com.samsung.smartclipboard.domain.model.DataItem
 import com.samsung.smartclipboard.domain.model.Topic
 import com.samsung.smartclipboard.domain.model.TopicAction
@@ -51,10 +50,6 @@ data class MainUiState(
     val mediaImportMessage: String? = null,
     val lastMediaImportCount: Int = 0,
     val showMediaPermissionBanner: Boolean = true,
-    // AI proposal fields
-    val proposals: List<AiProposal> = emptyList(),
-    val isGeneratingProposals: Boolean = false,
-    val proposalMessage: String? = null,
     // Topic/task fields
     val topics: List<Topic> = emptyList(),
     val selectedTopicId: Long? = null,
@@ -97,9 +92,6 @@ sealed interface MainIntent {
     data class MediaPermissionChanged(val hasPermission: Boolean) : MainIntent
     data object ImportRecentScreenshots : MainIntent
     data object DismissMediaImportMessage : MainIntent
-    // AI proposal intents
-    data object GenerateProposals : MainIntent
-    data object DismissProposals : MainIntent
     // Selection and handoff intents
     data object EnterSelectionMode : MainIntent
     data object ExitSelectionMode : MainIntent
@@ -117,5 +109,4 @@ sealed interface MainIntent {
     data class UpdateTopicActionDraft(val actionId: Long, val title: String, val body: String) : MainIntent
     data object DismissHandoffMessage : MainIntent
     data class HandoffActionCompleted(val message: String, val isSuccess: Boolean = true) : MainIntent
-    data class UseProposalForHandoff(val itemIds: List<Long>) : MainIntent
 }

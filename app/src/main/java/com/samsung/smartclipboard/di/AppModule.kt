@@ -2,8 +2,8 @@ package com.samsung.smartclipboard.di
 
 import android.content.Context
 import androidx.room.Room
-import com.samsung.smartclipboard.data.source.local.AiProposalDao
 import com.samsung.smartclipboard.data.source.local.DataItemDao
+import com.samsung.smartclipboard.data.source.local.KnowledgeDao
 import com.samsung.smartclipboard.data.source.local.SmartClipboardDatabase
 import com.samsung.smartclipboard.data.source.local.TopicDao
 import com.samsung.smartclipboard.data.repository.DataRepositoryImpl
@@ -33,9 +33,10 @@ abstract class AppModule {
                 SmartClipboardDatabase::class.java,
                 "smart_clipboard.db"
             )
-                .addMigrations(SmartClipboardDatabase.MIGRATION_1_2)
                 .addMigrations(SmartClipboardDatabase.MIGRATION_2_3)
                 .addMigrations(SmartClipboardDatabase.MIGRATION_3_4)
+                .addMigrations(SmartClipboardDatabase.MIGRATION_4_5)
+                .fallbackToDestructiveMigration()
                 .build()
         }
 
@@ -47,14 +48,14 @@ abstract class AppModule {
 
         @Provides
         @Singleton
-        fun provideAiProposalDao(database: SmartClipboardDatabase): AiProposalDao {
-            return database.aiProposalDao()
+        fun provideTopicDao(database: SmartClipboardDatabase): TopicDao {
+            return database.topicDao()
         }
 
         @Provides
         @Singleton
-        fun provideTopicDao(database: SmartClipboardDatabase): TopicDao {
-            return database.topicDao()
+        fun provideKnowledgeDao(database: SmartClipboardDatabase): KnowledgeDao {
+            return database.knowledgeDao()
         }
     }
 }

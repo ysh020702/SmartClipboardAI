@@ -40,6 +40,22 @@ interface TopicDao {
     @Query("SELECT id FROM topics WHERE title = :title COLLATE NOCASE LIMIT 1")
     suspend fun findTopicIdByTitle(title: String): Long?
 
+    @Query(
+        """
+        SELECT
+            topics.id AS id,
+            topics.title AS title,
+            COUNT(topic_item_cross_refs.itemId) AS itemCount,
+            topics.createdAt AS createdAt,
+            topics.updatedAt AS updatedAt
+        FROM topics
+        LEFT JOIN topic_item_cross_refs ON topics.id = topic_item_cross_refs.topicId
+        WHERE topics.id = :topicId
+        GROUP BY topics.id
+        """
+    )
+    suspend fun getTopicById(topicId: Long): TopicSummaryRow?
+
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertTopic(topic: TopicEntity): Long
 

@@ -529,6 +529,20 @@ class MainViewModel @Inject constructor(
                     }
                 }
             }
+            is MainIntent.OpenAgent -> {
+                _selectedTopicId.value = null
+                _uiState.update {
+                    it.copy(
+                        screenMode = MainScreenMode.AGENT,
+                        isSelectionMode = false,
+                        selectedItemIds = emptySet(),
+                        selectedTopicId = null,
+                        selectedTopicItems = emptyList(),
+                        selectedTopicAnalysis = emptyList(),
+                        selectedTopicActions = emptyList()
+                    )
+                }
+            }
         }
     }
 

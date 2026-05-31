@@ -9,6 +9,7 @@ import com.samsung.smartclipboard.domain.agent.TopicPlanner
 import com.samsung.smartclipboard.domain.model.AgentSession
 import com.samsung.smartclipboard.domain.model.AgentSessionState
 import com.samsung.smartclipboard.domain.model.RetrievalPlan
+import com.samsung.smartclipboard.domain.model.ToolExecutionResult
 import com.samsung.smartclipboard.domain.retrieval.CandidateItemRanker
 import com.samsung.smartclipboard.domain.retrieval.DataRetriever
 import com.samsung.smartclipboard.domain.tool.ToolExecutor
@@ -159,11 +160,161 @@ class AgentSessionViewModel @Inject constructor(
         }
     }
 
-    private fun routeSelectedAction() { /* existing */ }
-    private fun confirmExecution() { /* existing */ }
-    private fun cancelExecution() { /* existing */ }
-    private fun finishObservation() { /* existing */ }
-    private fun runAnotherAction() { /* existing */ }
+    private fun routeSelectedAction() {
+        val cur = _uiState.value
+        val st = cur.agentState
+        if (st !is AgentSessionState.AwaitingActionSelection) return
+        val session = cur.session ?: return
+        val idx = st.selectedActionIndex
+        if (idx == null || idx !in st.actionDrafts.indices) {
+            _uiState.update { it.copy(errorMessage = "실행할 작업을 선택해 주세요.") }; return
+        }
+        val action = st.actionDrafts[idx]
+        val routingState = AgentSessionState.RoutingTool(action)
+        _uiState.update {
+            it.copy(
+                session = session.copy(state = routingState, updatedAt = System.currentTimeMillis()),
+                agentState = routingState, isLoading = true, errorMessage = null
+            )
+        }
+        val result = toolRouter.route(action)
+        result.fold(
+            onSuccess = { routeResult ->
+                if (routeResult.missingRequiredInputs.isNotEmpty()) {
+                    val keys = routeResult.missingRequiredInputs.joinToString(", ") { it.key }
+                    setFailed("tool_validation", "실행에 필요한 입력이 부족합니다: $keys")
+                } else {
+                    val confirmState = AgentSessionState.AwaitingExecutionConfirm(
+                        action = routeResult.action,
+                        toolSpec = routeResult.toolSpec,
+                        resolvedPayload = routeResult.resolvedPayload
+                    )
+                    val now = System.currentTimeMillis()
+                    _uiState.update {
+                        it.copy(
+                            session = session.copy(state = confirmState, updatedAt = now),
+                            agentState = confirmState, isLoading = false, errorMessage = null
+                        )
+                    }
+                }
+            },
+            onFailure = { e -> setFailed("tool_routing", e.message ?: "도구 라우팅 실패") }
+        )
+    }
+
+    private fun confirmExecution() {
+        val cur = _uiState.value
+        val st = cur.agentState
+        if (st !is AgentSessionState.AwaitingExecutionConfirm) return
+        val session = cur.session ?: return
+        val sessionId = session.sessionId
+        val executingState = AgentSessionState.Executing(st.action)
+        _uiState.update {
+            it.copy(
+                session = session.copy(state = executingState, updatedAt = System.currentTimeMillis()),
+                agentState = executingState, isLoading = true, errorMessage = null
+            )
+        }
+        viewModelScope.launch {
+            try {
+                val result = toolExecutor.execute(
+                    sessionId = sessionId,
+                    action = st.action,
+                    toolSpec = st.toolSpec,
+                    payload = st.resolvedPayload
+                )
+                val cur2 = _uiState.value
+                val sess = cur2.session ?: return@launch
+                val existingIds = sess.toolResults.map { r -> r.resultId }.toSet()
+                val newResults = if (result.resultId in existingIds) sess.toolResults else sess.toolResults + result
+                val observingState = AgentSessionState.Observing(result)
+                _uiState.update {
+                    it.copy(
+                        session = sess.copy(state = observingState, toolResults = newResults, updatedAt = System.currentTimeMillis()),
+                        agentState = observingState, isLoading = false, errorMessage = null
+                    )
+                }
+            } catch (e: Exception) {
+                val errorResult = ToolExecutionResult(
+                    resultId = UUID.randomUUID().toString(),
+                    sessionId = sessionId,
+                    toolName = st.toolSpec.toolName,
+                    success = false,
+                    message = "실행 중 오류가 발생했습니다.",
+                    executedAt = System.currentTimeMillis(),
+                    errorDetail = e.message
+                )
+                val cur2 = _uiState.value
+                val sess = cur2.session ?: return@launch
+                val newResults = sess.toolResults + errorResult
+                val observingState = AgentSessionState.Observing(errorResult)
+                _uiState.update {
+                    it.copy(
+                        session = sess.copy(state = observingState, toolResults = newResults, updatedAt = System.currentTimeMillis()),
+                        agentState = observingState, isLoading = false, errorMessage = e.message
+                    )
+                }
+            }
+        }
+    }
+
+    private fun cancelExecution() {
+        val cur = _uiState.value
+        val st = cur.agentState
+        if (st !is AgentSessionState.AwaitingExecutionConfirm) return
+        val session = cur.session ?: return
+        if (session.actionDrafts.isNotEmpty()) {
+            val selIdx = session.selectedActionIndex
+            val safeIdx = if (selIdx != null && selIdx in session.actionDrafts.indices) selIdx else 0
+            val nextState = AgentSessionState.AwaitingActionSelection(
+                actionDrafts = session.actionDrafts, selectedActionIndex = safeIdx
+            )
+            _uiState.update {
+                it.copy(
+                    session = session.copy(state = nextState, updatedAt = System.currentTimeMillis()),
+                    agentState = nextState, isLoading = false, errorMessage = null
+                )
+            }
+        } else {
+            resetToIdle()
+        }
+    }
+
+    private fun finishObservation() {
+        val cur = _uiState.value
+        val st = cur.agentState
+        if (st !is AgentSessionState.Observing) return
+        val session = cur.session ?: return
+        val sessionId = session.sessionId
+        val completedState = AgentSessionState.Completed(sessionId)
+        _uiState.update {
+            it.copy(
+                session = session.copy(state = completedState, updatedAt = System.currentTimeMillis()),
+                agentState = completedState, isLoading = false, errorMessage = null
+            )
+        }
+    }
+
+    private fun runAnotherAction() {
+        val cur = _uiState.value
+        val st = cur.agentState
+        if (st !is AgentSessionState.Observing && st !is AgentSessionState.Completed) return
+        val session = cur.session ?: return
+        if (session.actionDrafts.isEmpty()) {
+            _uiState.update { it.copy(errorMessage = "다시 실행할 작업 후보가 없습니다.") }; return
+        }
+        val selIdx = session.selectedActionIndex
+        val safeIdx = if (selIdx != null && selIdx in session.actionDrafts.indices) selIdx else 0
+        val nextState = AgentSessionState.AwaitingActionSelection(
+            actionDrafts = session.actionDrafts, selectedActionIndex = safeIdx
+        )
+        _uiState.update {
+            it.copy(
+                session = session.copy(state = nextState, updatedAt = System.currentTimeMillis()),
+                agentState = nextState, isLoading = false, errorMessage = null
+            )
+        }
+    }
 
     // --- M9A Refinement ---
     private fun startRefinement() {

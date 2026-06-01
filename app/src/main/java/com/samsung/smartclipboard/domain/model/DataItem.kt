@@ -7,5 +7,6 @@ data class DataItem(
     val title: String? = null,
     val source: String? = null,
     val mimeType: String? = null,
-    val createdAt: Long
+    val createdAt: Long,
+    val extractedContent: String? = null
 )

@@ -76,7 +76,16 @@ class DataRepositoryImpl @Inject constructor(
             source = source,
             createdAt = System.currentTimeMillis()
         )
-        dataItemDao.insert(entity)
+        val id = dataItemDao.insert(entity)
+
+        try {
+            val extracted = sourceExtractor.extractFromUrl(url)
+            if (extracted.isNotBlank()) {
+                dataItemDao.updateExtractedContent(id, extracted)
+            }
+        } catch (e: Exception) {
+            Log.w("DataRepository", "URL 내용 추출 실패: $url", e)
+        }
     }
 
     override suspend fun addMedia(uri: String, mimeType: String?, source: String?) {
@@ -92,7 +101,18 @@ class DataRepositoryImpl @Inject constructor(
             source = source,
             createdAt = System.currentTimeMillis()
         )
-        dataItemDao.insert(entity)
+        val id = dataItemDao.insert(entity)
+
+        if (type == DataItemType.IMAGE) {
+            try {
+                val extracted = sourceExtractor.extractFromOcr(uri)
+                if (extracted.isNotBlank()) {
+                    dataItemDao.updateExtractedContent(id, extracted)
+                }
+            } catch (e: Exception) {
+                Log.w("DataRepository", "OCR 추출 실패 (media): $uri", e)
+            }
+        }
     }
 
     override suspend fun addScreenshot(
@@ -110,7 +130,16 @@ class DataRepositoryImpl @Inject constructor(
             source = source,
             createdAt = createdAt
         )
-        dataItemDao.insert(entity)
+        val id = dataItemDao.insert(entity)
+
+        try {
+            val extracted = sourceExtractor.extractFromOcr(uri)
+            if (extracted.isNotBlank()) {
+                dataItemDao.updateExtractedContent(id, extracted)
+            }
+        } catch (e: Exception) {
+            Log.w("DataRepository", "OCR 추출 실패 (screenshot): $uri", e)
+        }
     }
 
     override suspend fun updateScreenshotTimestamp(uri: String, createdAt: Long) {
@@ -237,7 +266,8 @@ class DataRepositoryImpl @Inject constructor(
             title = title,
             source = source,
             mimeType = mimeType,
-            createdAt = createdAt
+            createdAt = createdAt,
+            extractedContent = extractedContent
         )
     }
 

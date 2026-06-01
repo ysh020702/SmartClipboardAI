@@ -1,6 +1,5 @@
 package com.samsung.smartclipboard.presentation.agent
 
-
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.samsung.smartclipboard.domain.agent.ActionPlanner
@@ -56,6 +55,7 @@ class AgentSessionViewModel @Inject constructor(
             is AgentSessionIntent.RunAnotherAction -> runAnotherAction()
             is AgentSessionIntent.RefineFeedbackChanged -> onRefineFeedbackChanged(intent.feedback)
             is AgentSessionIntent.StartRefinement -> startRefinement()
+            is AgentSessionIntent.QuickRefine -> onQuickRefine(intent.action)
             is AgentSessionIntent.CancelRefinement -> onCancelRefinement()
             is AgentSessionIntent.Retry -> startSession()
             is AgentSessionIntent.Reset -> resetToIdle()
@@ -315,6 +315,13 @@ class AgentSessionViewModel @Inject constructor(
                 agentState = nextState, isLoading = false, errorMessage = null
             )
         }
+    }
+
+    // --- Quick Refine ---
+    private fun onQuickRefine(action: QuickRefineAction) {
+        _uiState.update { it.copy(refineFeedback = action.feedback) }
+        // 약간의 지연 후 startRefinement 호출 (StateFlow 업데이트 반영 대기)
+     startRefinement()
     }
 
     // --- M9A Refinement ---

@@ -78,9 +78,30 @@ class FallbackRefineAgent : RefineAgent {
 
     private fun adjustBody(body: String, feedback: String): String {
         val sb = StringBuilder(body.trim())
-        if (feedback.contains("짧게") || feedback.contains("간단히") || feedback.contains("요약")) {
-            if (sb.length > 500) sb.setLength(500)
+
+        // 퀵 액션: 더 간결하게 / 핵심만 요약
+        if (feedback.contains("간결") || feedback.contains("짧게") || feedback.contains("핵심만") || feedback.contains("요약")) {
+            // 문장 단위로 잘라서 절반 정도만 유지
+            val sentences = sb.split("(?<=[.!?。])\\s+".toRegex())
+            if (sentences.size > 3) {
+                val kept = sentences.take((sentences.size + 1) / 2)
+                sb.clear()
+                sb.append(kept.joinToString(" "))
+            } else if (sb.length > 500) {
+                sb.setLength(500)
+            }
         }
+
+        // 퀵 액션: 제목 바꿔줘 — title은 caller에서 처리, body는 그대로 유지
+
+        // 퀵 액션: 영어로 번역 — 폴백에서는 진짜 번역 불가, 안내 문구 추가
+        if (feedback.contains("영어로") || feedback.contains("번역")) {
+            sb.appendLine()
+            sb.appendLine()
+            sb.append("[번역 요청] 네트워크 연결 시 Gemini가 영어로 번역해 드립니다.")
+            return sb.toString().take(5000)
+        }
+
         sb.appendLine()
         sb.appendLine()
         sb.append("(사용자 피드백 반영: ${feedback.take(200)})")

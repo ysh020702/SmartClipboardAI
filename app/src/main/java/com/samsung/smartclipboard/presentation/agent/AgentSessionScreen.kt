@@ -89,6 +89,7 @@ fun AgentSessionScreen(
                     refineFeedback = uiState.refineFeedback,
                     onRefineFeedbackChange = { onIntent(AgentSessionIntent.RefineFeedbackChanged(it)) },
                     onStartRefinement = { onIntent(AgentSessionIntent.StartRefinement) },
+                    onQuickRefine = { onIntent(AgentSessionIntent.QuickRefine(it)) },
                     onCancelRefinement = { onIntent(AgentSessionIntent.CancelRefinement) }
                 )
                 is AgentSessionState.Refining -> RefiningContent(feedback = state.feedback)

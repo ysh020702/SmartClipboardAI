@@ -6,7 +6,6 @@ import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.samsung.smartclipboard.data.model.DataItemEntity
-import com.samsung.smartclipboard.data.model.KnowledgeEntity
 import com.samsung.smartclipboard.data.model.TopicActionEntity
 import com.samsung.smartclipboard.data.model.TopicAnalysisEntity
 import com.samsung.smartclipboard.data.model.TopicEntity
@@ -18,8 +17,7 @@ import com.samsung.smartclipboard.data.model.TopicItemCrossRefEntity
         TopicEntity::class,
         TopicItemCrossRefEntity::class,
         TopicAnalysisEntity::class,
-        TopicActionEntity::class,
-        KnowledgeEntity::class
+        TopicActionEntity::class
     ],
     version = 5,
     exportSchema = false
@@ -28,7 +26,6 @@ import com.samsung.smartclipboard.data.model.TopicItemCrossRefEntity
 abstract class SmartClipboardDatabase : RoomDatabase() {
     abstract fun dataItemDao(): DataItemDao
     abstract fun topicDao(): TopicDao
-    abstract fun knowledgeDao(): KnowledgeDao
 
     companion object {
         val MIGRATION_2_3 = object : Migration(2, 3) {
@@ -131,29 +128,6 @@ abstract class SmartClipboardDatabase : RoomDatabase() {
             }
         }
 
-        val MIGRATION_4_5 = object : Migration(4, 5) {
-            override fun migrate(db: SupportSQLiteDatabase) {
-                db.execSQL(
-                    """
-                    CREATE TABLE IF NOT EXISTS knowledge_table (
-                        id TEXT PRIMARY KEY NOT NULL,
-                        type TEXT NOT NULL,
-                        source TEXT NOT NULL,
-                        title TEXT NOT NULL,
-                        topic TEXT NOT NULL,
-                        purpose TEXT NOT NULL,
-                        summary TEXT NOT NULL,
-                        keywords TEXT NOT NULL,
-                        content TEXT NOT NULL,
-                        groupKey TEXT NOT NULL,
-                        groupReason TEXT NOT NULL,
-                        createdAt INTEGER NOT NULL
-                    )
-                    """.trimIndent()
-                )
-            }
-        }
-        
         val MIGRATION_5_6 = object : Migration(5, 6) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL(

@@ -6,6 +6,7 @@ import com.samsung.smartclipboard.domain.model.TopicActionType
 import com.samsung.smartclipboard.domain.tool.ToolRegistry
 import com.samsung.smartclipboard.domain.tool.ToolRouteResult
 import com.samsung.smartclipboard.domain.tool.ToolRouter
+import com.samsung.smartclipboard.util.AgentTraceLogger
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -15,18 +16,41 @@ class ToolRouterImpl(
 ) : ToolRouter {
 
     override fun route(action: AgentActionDraft): Result<ToolRouteResult> {
+        AgentTraceLogger.event(
+            stage = "tool_router",
+            message = "start",
+            details = mapOf(
+                "actionType" to action.type,
+                "title" to action.title,
+                "sourceItemIds" to action.sourceItemIds,
+                "hasPayload" to !action.payload.isNullOrBlank()
+            )
+        )
         if (action.title.isBlank() && action.body.isBlank()) {
+            AgentTraceLogger.error("tool_router", "action title and body are blank")
             return Result.failure(IllegalArgumentException("작업 제목과 본문이 모두 비어 있습니다"))
         }
 
         val parsedPayload = parsePayloadString(action.payload)
         val toolName = chooseToolName(action, parsedPayload)
         val toolSpec = toolRegistry.getTool(toolName)
-            ?: return Result.failure(IllegalArgumentException("등록된 도구를 찾을 수 없습니다: $toolName"))
+        if (toolSpec == null) {
+            AgentTraceLogger.error("tool_router", "tool not registered: $toolName")
+            return Result.failure(IllegalArgumentException("등록된 도구를 찾을 수 없습니다: $toolName"))
+        }
 
         val resolvedPayload = buildPayloadForTool(toolName, action, parsedPayload)
         val missingRequiredInputs = validateRequiredInputs(toolSpec, resolvedPayload)
 
+        AgentTraceLogger.event(
+            stage = "tool_router",
+            message = "complete",
+            details = mapOf(
+                "toolName" to toolName,
+                "payloadKeys" to resolvedPayload.keys,
+                "missingRequiredInputs" to missingRequiredInputs.map { it.key }
+            )
+        )
         return Result.success(
             ToolRouteResult(
                 action = action,

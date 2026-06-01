@@ -9,6 +9,7 @@ import com.samsung.smartclipboard.domain.model.AgentActionDraft
 import com.samsung.smartclipboard.domain.model.ToolExecutionResult
 import com.samsung.smartclipboard.domain.model.ToolSpec
 import com.samsung.smartclipboard.domain.tool.ToolExecutor
+import com.samsung.smartclipboard.util.AgentTraceLogger
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.util.UUID
 import javax.inject.Inject
@@ -23,8 +24,18 @@ class ToolExecutorImpl @Inject constructor(
         toolSpec: ToolSpec,
         payload: Map<String, String>
     ): ToolExecutionResult {
+        AgentTraceLogger.event(
+            stage = "tool_executor",
+            message = "start",
+            details = mapOf(
+                "sessionId" to sessionId,
+                "toolName" to toolSpec.toolName,
+                "actionType" to action.type,
+                "payloadKeys" to payload.keys
+            )
+        )
         return try {
-            when (toolSpec.toolName) {
+            val result = when (toolSpec.toolName) {
                 "copy_to_clipboard" -> executeCopyToClipboard(sessionId, toolSpec, payload)
                 "share_text" -> executeShareText(sessionId, toolSpec, payload)
                 "open_url" -> executeOpenUrl(sessionId, toolSpec, payload)
@@ -39,7 +50,20 @@ class ToolExecutorImpl @Inject constructor(
                     errorDetail = "unknown_tool: ${toolSpec.toolName}"
                 )
             }
+            AgentTraceLogger.event(
+                stage = "tool_executor",
+                message = "complete",
+                details = mapOf(
+                    "resultId" to result.resultId,
+                    "toolName" to result.toolName,
+                    "success" to result.success,
+                    "message" to result.message,
+                    "errorDetail" to result.errorDetail
+                )
+            )
+            result
         } catch (e: Exception) {
+            AgentTraceLogger.error("tool_executor", "exception during tool execution", e)
             ToolExecutionResult(
                 resultId = UUID.randomUUID().toString(),
                 sessionId = sessionId,

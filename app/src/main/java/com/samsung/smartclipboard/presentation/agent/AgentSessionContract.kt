@@ -2,6 +2,7 @@ package com.samsung.smartclipboard.presentation.agent
 
 import com.samsung.smartclipboard.domain.model.AgentSession
 import com.samsung.smartclipboard.domain.model.AgentSessionState
+import com.samsung.smartclipboard.domain.model.DataItem
 import com.samsung.smartclipboard.domain.model.RetrievalPlan
 
 /**
@@ -14,7 +15,15 @@ data class AgentSessionUiState(
     val retrievalPlan: RetrievalPlan? = null,
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
-    val refineFeedback: String = ""
+    val refineFeedback: String = "",
+    // Dashboard fields
+    val items: List<DataItem> = emptyList(),
+    val isItemsLoading: Boolean = true,
+    val hasMediaPermission: Boolean = false,
+    val isMediaImporting: Boolean = false,
+    val mediaImportMessage: String? = null,
+    val showMediaPermissionBanner: Boolean = true,
+    val lastMediaImportCount: Int = 0
 )
 
 /**
@@ -48,4 +57,8 @@ sealed interface AgentSessionIntent {
     data object CancelRefinement : AgentSessionIntent
     data object Reset : AgentSessionIntent
     data object DismissError : AgentSessionIntent
+    // Dashboard/media intents
+    data object ImportRecentScreenshots : AgentSessionIntent
+    data object DismissMediaImportMessage : AgentSessionIntent
+    data class MediaPermissionChanged(val hasPermission: Boolean) : AgentSessionIntent
 }

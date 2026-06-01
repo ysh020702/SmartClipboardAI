@@ -6,6 +6,7 @@ import com.samsung.smartclipboard.domain.ai.GeminiManager
 import com.samsung.smartclipboard.domain.model.CandidateItem
 import com.samsung.smartclipboard.domain.model.ItemRecommendationResult
 import com.samsung.smartclipboard.domain.model.RetrievalPlan
+import com.samsung.smartclipboard.util.AgentTraceLogger
 
 /**
  * Gemini LLM을 통해 추천 아이템 선택과 이유 생성을 수행하는 ItemRecommendationAgent 구현체.
@@ -27,13 +28,25 @@ class GeminiItemRecommendationAgent(
         }
 
         if (candidates.isEmpty()) {
+            AgentTraceLogger.fallback("item_recommendation", "empty_candidates")
             return fallbackAgent.recommend(topicQuery, plan, candidates)
         }
 
         return try {
             val candidatesForPrompt = candidates.take(20)
+            AgentTraceLogger.event(
+                stage = "item_recommendation",
+                message = "start",
+                details = mapOf(
+                    "topicQuery" to topicQuery,
+                    "candidateCount" to candidates.size,
+                    "promptCandidateIds" to candidatesForPrompt.map { it.item.id }
+                )
+            )
             val prompt = GeminiItemRecommendationPrompt.build(topicQuery, plan, candidatesForPrompt)
+            AgentTraceLogger.prompt("item_recommendation", prompt)
             val rawResponse = geminiManager.run(prompt)
+            AgentTraceLogger.rawResponse("item_recommendation", rawResponse)
 
             val parseResult = GeminiItemRecommendationJsonParser.parseItemRecommendation(
                 raw = rawResponse,
@@ -42,17 +55,29 @@ class GeminiItemRecommendationAgent(
 
             parseResult.fold(
                 onSuccess = { result ->
+                    AgentTraceLogger.parsed(
+                        stage = "item_recommendation",
+                        message = "recommendation result",
+                        details = mapOf(
+                            "recommendedIds" to result.recommendedItems.map { it.item.id },
+                            "selectedItemIds" to result.selectedItemIds,
+                            "suggestedQueries" to result.suggestedQueries
+                        )
+                    )
                     if (validateResult(result, candidatesForPrompt)) {
                         Result.success(result)
                     } else {
+                        AgentTraceLogger.fallback("item_recommendation", "invalid_parsed_result")
                         fallbackAgent.recommend(topicQuery, plan, candidates)
                     }
                 },
-                onFailure = {
+                onFailure = { error ->
+                    AgentTraceLogger.fallback("item_recommendation", "parse_failed", error)
                     fallbackAgent.recommend(topicQuery, plan, candidates)
                 }
             )
         } catch (e: Exception) {
+            AgentTraceLogger.fallback("item_recommendation", "gemini_exception", e)
             fallbackAgent.recommend(topicQuery, plan, candidates)
         }
     }

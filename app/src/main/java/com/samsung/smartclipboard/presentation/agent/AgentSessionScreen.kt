@@ -1,66 +1,68 @@
 package com.samsung.smartclipboard.presentation.agent
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.samsung.smartclipboard.domain.model.AgentActionDraft
 import com.samsung.smartclipboard.domain.model.AgentSessionState
+import com.samsung.smartclipboard.domain.model.DataItem
+import com.samsung.smartclipboard.domain.model.DataItemType
+import java.util.Calendar
 
 @Composable
 fun AgentSessionScreen(
     viewModel: AgentSessionViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    AgentSessionScreen(uiState = uiState, onIntent = viewModel::onIntent)
+    AgentSessionScreen(
+        uiState = uiState,
+        onIntent = viewModel::onIntent,
+        onRequestMediaPermission = {}
+    )
 }
 
 @Composable
 fun AgentSessionScreen(
     uiState: AgentSessionUiState,
-    onIntent: (AgentSessionIntent) -> Unit
+    onIntent: (AgentSessionIntent) -> Unit,
+    onRequestMediaPermission: () -> Unit = {}
 ) {
     Scaffold { innerPadding ->
         Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
             when (val state = uiState.agentState) {
                 is AgentSessionState.Idle -> {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .verticalScroll(rememberScrollState())
-                    ) {
-                        TopicInputScreen(
-                            topicQuery = uiState.topicQuery,
-                            isLoading = uiState.isLoading,
-                            errorMessage = uiState.errorMessage,
-                            onTopicQueryChange = { onIntent(AgentSessionIntent.TopicQueryChanged(it)) },
-                            onStart = { onIntent(AgentSessionIntent.Start) }
-                        )
-                        ClusterSuggestionScreen(
-                            onTopicSelected = { suggestedTitle ->
-                                onIntent(AgentSessionIntent.StartWithSuggestedTopic(suggestedTitle))
-                            },
-                            modifier = Modifier.heightIn(max = 400.dp),
-                            compactMode = true
-                        )
-                    }
+                    DashboardScreen(
+                        uiState = uiState,
+                        onIntent = onIntent,
+                        onRequestMediaPermission = onRequestMediaPermission
+                    )
                 }
                 is AgentSessionState.PlanningRetrieval -> TopicInputScreen(
                     topicQuery = uiState.topicQuery, isLoading = uiState.isLoading,
@@ -136,6 +138,146 @@ fun AgentSessionScreen(
         }
     }
 }
+
+// ---------------------------------------------------------------------------
+// Dashboard Home (Idle state) — 이전 MainScreen.DashboardHome 구성 요소
+// ---------------------------------------------------------------------------
+@Composable
+private fun DashboardScreen(
+    uiState: AgentSessionUiState,
+    onIntent: (AgentSessionIntent) -> Unit,
+    onRequestMediaPermission: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        TodayCollectionCard(uiState = uiState, onIntent = onIntent)
+
+        ScreenshotImportBanner(
+            uiState = uiState,
+            onIntent = onIntent,
+            onRequestMediaPermission = onRequestMediaPermission
+        )
+
+        ClusterSuggestionScreen(
+            onTopicSelected = { suggestedTitle ->
+                onIntent(AgentSessionIntent.StartWithSuggestedTopic(suggestedTitle))
+            },
+            modifier = Modifier.heightIn(max = 400.dp),
+            compactMode = true
+        )
+    }
+}
+
+@Composable
+private fun TodayCollectionCard(
+    uiState: AgentSessionUiState,
+    onIntent: (AgentSessionIntent) -> Unit
+) {
+    val todayItems = uiState.items.filter { isSameDay(it.createdAt, 0) }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        )
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = "오늘 수집",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "${todayItems.size}개 수집됨",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = todaySuggestionText(todayItems),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+private fun ScreenshotImportBanner(
+    uiState: AgentSessionUiState,
+    onIntent: (AgentSessionIntent) -> Unit,
+    onRequestMediaPermission: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        )
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = "스크린샷 가져오기",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            if (uiState.showMediaPermissionBanner) {
+                Text(
+                    text = "이미지 접근을 허용하면 최근 스크린샷을 수집할 수 있어요.",
+                    style = MaterialTheme.typography.bodySmall
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Button(onClick = onRequestMediaPermission) {
+                    Text("권한 허용")
+                }
+            } else if (uiState.isMediaImporting) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "스크린샷을 살펴보는 중...",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            } else {
+                Text(
+                    text = "최근 스크린샷을 다시 확인합니다.",
+                    style = MaterialTheme.typography.bodySmall
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Button(onClick = { onIntent(AgentSessionIntent.ImportRecentScreenshots) }) {
+                    Text("다시 스캔")
+                }
+            }
+            uiState.mediaImportMessage?.let { message ->
+                Spacer(modifier = Modifier.height(6.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = message,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.weight(1f)
+                    )
+                    TextButton(onClick = { onIntent(AgentSessionIntent.DismissMediaImportMessage) }) {
+                        Text("닫기", style = MaterialTheme.typography.labelSmall)
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// 기존 AgentSessionScreen 하위 컴포넌트 (변경 없음)
+// ---------------------------------------------------------------------------
 
 @Composable private fun RetrievingContent(query: String, progress: Float) {
     Column(modifier = Modifier.fillMaxSize().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -213,4 +355,35 @@ private fun FailedContent(
         if (recoverable) { Button(onClick = onRetry, modifier = Modifier.padding(top = 24.dp)) { Text("재시도") } }
         Button(onClick = onReset, modifier = Modifier.padding(top = 8.dp)) { Text("처음으로") }
     }
+}
+
+// ---------------------------------------------------------------------------
+// 유틸리티 함수
+// ---------------------------------------------------------------------------
+private fun todaySuggestionText(todayItems: List<DataItem>): String {
+    if (todayItems.isEmpty()) {
+        return "오늘 모인 데이터가 생기면 요약, 일정, 작업 연결 후보를 추천합니다."
+    }
+    val hasDateLikeText = todayItems.any {
+        it.content.contains(Regex("\\d{1,2}:\\d{2}|\\d{4}[-/]\\d{1,2}[-/]\\d{1,2}|오전|오후"))
+    }
+    val linkCount = todayItems.count { it.type == DataItemType.LINK }
+    val screenshotCount = todayItems.count { it.type == DataItemType.SCREENSHOT }
+    return when {
+        hasDateLikeText -> "날짜나 시간이 들어간 데이터가 있어 일정 초안으로 이어질 수 있어요."
+        screenshotCount >= 2 -> "스크린샷이 여러 개 모였어요. 관련 장면을 묶어 검토해보세요."
+        linkCount >= 2 -> "링크가 여러 개 모였어요. 리서치 노트로 정리하기 좋습니다."
+        else -> "필요한 데이터를 직접 고르거나 주제를 입력해 AI 후보 선택을 시작하세요."
+    }
+}
+
+private fun isSameDay(timeMillis: Long, dayOffset: Int): Boolean {
+    val target = Calendar.getInstance().apply {
+        add(Calendar.DAY_OF_YEAR, dayOffset)
+    }
+    val itemDay = Calendar.getInstance().apply {
+        timeInMillis = timeMillis
+    }
+    return target.get(Calendar.YEAR) == itemDay.get(Calendar.YEAR) &&
+            target.get(Calendar.DAY_OF_YEAR) == itemDay.get(Calendar.DAY_OF_YEAR)
 }

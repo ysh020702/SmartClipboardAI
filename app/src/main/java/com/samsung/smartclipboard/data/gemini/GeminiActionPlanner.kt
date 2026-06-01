@@ -6,6 +6,7 @@ import com.samsung.smartclipboard.domain.ai.GeminiManager
 import com.samsung.smartclipboard.domain.model.AgentActionDraft
 import com.samsung.smartclipboard.domain.model.CandidateItem
 import com.samsung.smartclipboard.domain.model.RetrievalPlan
+import com.samsung.smartclipboard.util.AgentTraceLogger
 
 class GeminiActionPlanner(
     private val geminiManager: GeminiManager,
@@ -26,24 +27,47 @@ class GeminiActionPlanner(
 
         return try {
             val selectedItemsForPrompt = selectedItems.take(10)
+            AgentTraceLogger.event(
+                stage = "action_planner",
+                message = "start",
+                details = mapOf(
+                    "topicQuery" to topicQuery,
+                    "selectedCount" to selectedItems.size,
+                    "promptItemIds" to selectedItemsForPrompt.map { it.item.id }
+                )
+            )
             val prompt = GeminiActionPlannerPrompt.build(topicQuery, plan, selectedItemsForPrompt)
+            AgentTraceLogger.prompt("action_planner", prompt)
             val rawResponse = geminiManager.run(prompt)
+            AgentTraceLogger.rawResponse("action_planner", rawResponse)
 
             val parseResult = GeminiActionPlannerJsonParser.parseActions(rawResponse, selectedItemsForPrompt)
 
             parseResult.fold(
                 onSuccess = { actions ->
+                    AgentTraceLogger.parsed(
+                        stage = "action_planner",
+                        message = "action drafts",
+                        details = mapOf(
+                            "actionCount" to actions.size,
+                            "actions" to actions.map { "${it.type}:${it.title}" },
+                            "sourceItemIds" to actions.map { it.sourceItemIds }
+                        )
+                    )
                     if (validateActions(actions, selectedItemsForPrompt)) {
                         Result.success(actions)
                     } else {
+                        AgentTraceLogger.fallback("action_planner", "invalid_parsed_actions")
                         fallbackPlanner.planActions(topicQuery, plan, selectedItems)
                     }
                 },
-                onFailure = {
+                onFailure = { error ->
+                    AgentTraceLogger.fallback("action_planner", "parse_failed", error)
                     fallbackPlanner.planActions(topicQuery, plan, selectedItems)
                 }
             )
         } catch (e: Exception) {
+            AgentTraceLogger.fallback("action_planner", "gemini_exception", e)
             fallbackPlanner.planActions(topicQuery, plan, selectedItems)
         }
     }

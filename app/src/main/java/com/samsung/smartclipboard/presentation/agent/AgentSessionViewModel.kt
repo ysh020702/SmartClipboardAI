@@ -2,6 +2,7 @@ package com.samsung.smartclipboard.presentation.agent
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.samsung.smartclipboard.data.source.media.MediaImportHandler
 import com.samsung.smartclipboard.domain.agent.ActionPlanner
 import com.samsung.smartclipboard.domain.agent.ItemRecommendationAgent
 import com.samsung.smartclipboard.domain.agent.RefineAgent
@@ -10,10 +11,12 @@ import com.samsung.smartclipboard.domain.model.AgentSession
 import com.samsung.smartclipboard.domain.model.AgentSessionState
 import com.samsung.smartclipboard.domain.model.RetrievalPlan
 import com.samsung.smartclipboard.domain.model.ToolExecutionResult
+import com.samsung.smartclipboard.domain.repository.DataRepository
 import com.samsung.smartclipboard.domain.retrieval.CandidateItemRanker
 import com.samsung.smartclipboard.domain.retrieval.DataRetriever
 import com.samsung.smartclipboard.domain.tool.ToolExecutor
 import com.samsung.smartclipboard.domain.tool.ToolRouter
+import com.samsung.smartclipboard.util.AgentTraceLogger
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -25,6 +28,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class AgentSessionViewModel @Inject constructor(
+    private val dataRepository: DataRepository,
+    private val mediaImportHandler: MediaImportHandler,
     private val topicPlanner: TopicPlanner,
     private val dataRetriever: DataRetriever,
     private val candidateItemRanker: CandidateItemRanker,
@@ -37,6 +42,41 @@ class AgentSessionViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(AgentSessionUiState())
     val uiState: StateFlow<AgentSessionUiState> = _uiState.asStateFlow()
+
+    init {
+        observeItems()
+    }
+
+    private fun observeItems() {
+        viewModelScope.launch {
+            dataRepository.observeItems().collect { items ->
+                _uiState.update { it.copy(items = items, isItemsLoading = false) }
+            }
+        }
+    }
+
+    private fun importRecentScreenshots() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isMediaImporting = true, mediaImportMessage = null) }
+            try {
+                val result = mediaImportHandler.importRecentScreenshots()
+                _uiState.update {
+                    it.copy(
+                        isMediaImporting = false,
+                        lastMediaImportCount = result.importedCount,
+                        mediaImportMessage = "최근 스크린샷 ${result.importedCount}개를 가져왔어요"
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(
+                        isMediaImporting = false,
+                        mediaImportMessage = "스크린샷 가져오기 실패: ${e.message}"
+                    )
+                }
+            }
+        }
+    }
 
     fun onIntent(intent: AgentSessionIntent) {
         when (intent) {
@@ -60,6 +100,9 @@ class AgentSessionViewModel @Inject constructor(
             is AgentSessionIntent.Retry -> startSession()
             is AgentSessionIntent.Reset -> resetToIdle()
             is AgentSessionIntent.DismissError -> _uiState.update { it.copy(errorMessage = null) }
+            is AgentSessionIntent.ImportRecentScreenshots -> importRecentScreenshots()
+            is AgentSessionIntent.DismissMediaImportMessage -> _uiState.update { it.copy(mediaImportMessage = null) }
+            is AgentSessionIntent.MediaPermissionChanged -> _uiState.update { it.copy(hasMediaPermission = intent.hasPermission, showMediaPermissionBanner = !intent.hasPermission) }
         }
     }
 
@@ -89,18 +132,54 @@ class AgentSessionViewModel @Inject constructor(
         val topicQuery = (topicOverride ?: current.topicQuery).trim()
         if (topicQuery.isBlank()) { _uiState.update { it.copy(agentState = AgentSessionState.Failed("input", "주제를 입력해 주세요.", true), errorMessage = "주제를 입력해 주세요.", isLoading = false) }; return }
         val session = AgentSession(sessionId = UUID.randomUUID().toString(), topicTitle = topicQuery, state = AgentSessionState.PlanningRetrieval)
+        AgentTraceLogger.event(
+            stage = "agent_session",
+            message = "start",
+            details = mapOf("sessionId" to session.sessionId, "topicQuery" to topicQuery)
+        )
         _uiState.update { it.copy(session = session, agentState = AgentSessionState.PlanningRetrieval, isLoading = true, errorMessage = null) }
         viewModelScope.launch {
             try {
                 val plan = topicPlanner.plan(topicQuery).getOrElse { throw it }
+                AgentTraceLogger.event(
+                    stage = "agent_session",
+                    message = "retrieval plan ready",
+                    details = mapOf(
+                        "keywords" to plan.keywords,
+                        "typeFilters" to plan.typeFilters,
+                        "dateRangeDays" to plan.dateRangeDays,
+                        "maxResults" to plan.maxResults
+                    )
+                )
                 _uiState.update { it.copy(retrievalPlan = plan, agentState = AgentSessionState.RetrievingItems(query = topicQuery, progress = 0.35f)) }
                 val items = dataRetriever.retrieve(plan)
+                AgentTraceLogger.event("agent_session", "items retrieved", mapOf("count" to items.size, "ids" to items.map { it.id }))
                 val rankedCandidates = candidateItemRanker.rank(topicQuery, plan, items)
+                AgentTraceLogger.event(
+                    stage = "agent_session",
+                    message = "candidates ranked",
+                    details = mapOf(
+                        "count" to rankedCandidates.size,
+                        "topIds" to rankedCandidates.take(10).map { it.item.id }
+                    )
+                )
                 val result = itemRecommendationAgent.recommend(topicQuery, plan, rankedCandidates).getOrElse { throw it }
+                AgentTraceLogger.event(
+                    stage = "agent_session",
+                    message = "recommendation ready",
+                    details = mapOf(
+                        "recommendedIds" to result.recommendedItems.map { it.item.id },
+                        "selectedItemIds" to result.selectedItemIds,
+                        "suggestedQueries" to result.suggestedQueries
+                    )
+                )
                 val awaitState = AgentSessionState.AwaitingItemSelection(result.recommendedItems, result.recommendationReason, result.suggestedQueries, result.selectedItemIds)
                 val updatedSession = session.copy(state = awaitState, candidateItems = result.recommendedItems, updatedAt = System.currentTimeMillis())
                 _uiState.update { it.copy(session = updatedSession, agentState = awaitState, isLoading = false, errorMessage = null) }
-            } catch (e: Exception) { setFailed("planning", e) }
+            } catch (e: Exception) {
+                AgentTraceLogger.error("agent_session", "planning failed", e)
+                setFailed("planning", e)
+            }
         }
     }
 
@@ -144,6 +223,11 @@ class AgentSessionViewModel @Inject constructor(
         if (sIds.isEmpty()) { _uiState.update { it.copy(errorMessage = "하나 이상의 아이템을 선택해 주세요.") }; return }
         val sItems = st.candidateItems.filter { it.item.id in sIds }
         if (sItems.isEmpty()) { _uiState.update { it.copy(errorMessage = "선택된 아이템을 찾을 수 없습니다.") }; return }
+        AgentTraceLogger.event(
+            stage = "agent_session",
+            message = "generate actions requested",
+            details = mapOf("selectedItemIds" to sIds, "selectedCount" to sItems.size)
+        )
         val tq = cur.topicQuery.trim()
         val pl = cur.retrievalPlan ?: RetrievalPlan(keywords = listOf(tq), maxResults = sItems.size.coerceAtLeast(5))
         val gs = AgentSessionState.GeneratingActions(selectedItemCount = sIds.size)
@@ -155,9 +239,20 @@ class AgentSessionViewModel @Inject constructor(
                 val idSet = sItems.map { it.item.id }.toSet()
                 val va = acts.filter { it.sourceItemIds.all { id -> id in idSet } && it.sourceItemIds.isNotEmpty() }.distinctBy { it.type to it.title }.take(5)
                 if (va.isEmpty()) { setFailed("action_planning", "유효한 작업 후보 없음"); return@launch }
+                AgentTraceLogger.event(
+                    stage = "agent_session",
+                    message = "actions ready",
+                    details = mapOf(
+                        "actionCount" to va.size,
+                        "actions" to va.map { "${it.type}:${it.title}" }
+                    )
+                )
                 val as_ = AgentSessionState.AwaitingActionSelection(actionDrafts = va, selectedActionIndex = va.indices.firstOrNull())
                 _uiState.update { it.copy(session = cur.session?.copy(state = as_, actionDrafts = va, selectedActionIndex = as_.selectedActionIndex, updatedAt = System.currentTimeMillis()), agentState = as_, isLoading = false, errorMessage = null) }
-            } catch (e: Exception) { setFailed("action_planning", e) }
+            } catch (e: Exception) {
+                AgentTraceLogger.error("agent_session", "action planning failed", e)
+                setFailed("action_planning", e)
+            }
         }
     }
 
@@ -171,6 +266,11 @@ class AgentSessionViewModel @Inject constructor(
             _uiState.update { it.copy(errorMessage = "실행할 작업을 선택해 주세요.") }; return
         }
         val action = st.actionDrafts[idx]
+        AgentTraceLogger.event(
+            stage = "agent_session",
+            message = "route selected action",
+            details = mapOf("selectedActionIndex" to idx, "actionType" to action.type, "title" to action.title)
+        )
         val routingState = AgentSessionState.RoutingTool(action)
         _uiState.update {
             it.copy(
@@ -183,8 +283,17 @@ class AgentSessionViewModel @Inject constructor(
             onSuccess = { routeResult ->
                 if (routeResult.missingRequiredInputs.isNotEmpty()) {
                     val keys = routeResult.missingRequiredInputs.joinToString(", ") { it.key }
+                    AgentTraceLogger.event("agent_session", "tool route missing required input", mapOf("keys" to keys))
                     setFailed("tool_validation", "실행에 필요한 입력이 부족합니다: $keys")
                 } else {
+                    AgentTraceLogger.event(
+                        stage = "agent_session",
+                        message = "tool route ready",
+                        details = mapOf(
+                            "toolName" to routeResult.toolSpec.toolName,
+                            "payloadKeys" to routeResult.resolvedPayload.keys
+                        )
+                    )
                     val confirmState = AgentSessionState.AwaitingExecutionConfirm(
                         action = routeResult.action,
                         toolSpec = routeResult.toolSpec,
@@ -199,7 +308,10 @@ class AgentSessionViewModel @Inject constructor(
                     }
                 }
             },
-            onFailure = { e -> setFailed("tool_routing", e.message ?: "도구 라우팅 실패") }
+            onFailure = { e ->
+                AgentTraceLogger.error("agent_session", "tool routing failed", e)
+                setFailed("tool_routing", e.message ?: "도구 라우팅 실패")
+            }
         )
     }
 
@@ -210,6 +322,15 @@ class AgentSessionViewModel @Inject constructor(
         val session = cur.session ?: return
         val sessionId = session.sessionId
         val executingState = AgentSessionState.Executing(st.action)
+        AgentTraceLogger.event(
+            stage = "agent_session",
+            message = "confirm execution",
+            details = mapOf(
+                "sessionId" to sessionId,
+                "toolName" to st.toolSpec.toolName,
+                "actionType" to st.action.type
+            )
+        )
         _uiState.update {
             it.copy(
                 session = session.copy(state = executingState, updatedAt = System.currentTimeMillis()),
@@ -229,6 +350,16 @@ class AgentSessionViewModel @Inject constructor(
                 val existingIds = sess.toolResults.map { r -> r.resultId }.toSet()
                 val newResults = if (result.resultId in existingIds) sess.toolResults else sess.toolResults + result
                 val observingState = AgentSessionState.Observing(result)
+                AgentTraceLogger.event(
+                    stage = "agent_session",
+                    message = "execution observed",
+                    details = mapOf(
+                        "resultId" to result.resultId,
+                        "success" to result.success,
+                        "message" to result.message,
+                        "errorDetail" to result.errorDetail
+                    )
+                )
                 _uiState.update {
                     it.copy(
                         session = sess.copy(state = observingState, toolResults = newResults, updatedAt = System.currentTimeMillis()),
@@ -236,6 +367,7 @@ class AgentSessionViewModel @Inject constructor(
                     )
                 }
             } catch (e: Exception) {
+                AgentTraceLogger.error("agent_session", "execution exception", e)
                 val errorResult = ToolExecutionResult(
                     resultId = UUID.randomUUID().toString(),
                     sessionId = sessionId,
@@ -342,6 +474,15 @@ class AgentSessionViewModel @Inject constructor(
 
         val previousState = st
         val refiningState = AgentSessionState.Refining(feedback)
+        AgentTraceLogger.event(
+            stage = "agent_session",
+            message = "refinement requested",
+            details = mapOf(
+                "feedback" to feedback,
+                "selectedItemIds" to sItems.map { it.item.id },
+                "currentActionCount" to currentActions.size
+            )
+        )
         _uiState.update { it.copy(session = session.copy(state = refiningState, updatedAt = System.currentTimeMillis()), agentState = refiningState, isLoading = true, errorMessage = null) }
         viewModelScope.launch {
             try {
@@ -356,9 +497,18 @@ class AgentSessionViewModel @Inject constructor(
                     _uiState.update { it.copy(session = session.copy(state = previousState, updatedAt = System.currentTimeMillis()), agentState = previousState, isLoading = false, errorMessage = "보완된 작업 후보가 유효하지 않습니다.") }
                     return@launch
                 }
+                AgentTraceLogger.event(
+                    stage = "agent_session",
+                    message = "refinement ready",
+                    details = mapOf(
+                        "actionCount" to va.size,
+                        "actions" to va.map { "${it.type}:${it.title}" }
+                    )
+                )
                 val as_ = AgentSessionState.AwaitingActionSelection(actionDrafts = va, selectedActionIndex = va.indices.firstOrNull())
                 _uiState.update { it.copy(session = session.copy(state = as_, actionDrafts = va, selectedActionIndex = as_.selectedActionIndex, updatedAt = System.currentTimeMillis()), agentState = as_, refineFeedback = "", isLoading = false, errorMessage = null) }
             } catch (e: Exception) {
+                AgentTraceLogger.error("agent_session", "refinement failed", e)
                 _uiState.update { it.copy(session = session.copy(state = previousState, updatedAt = System.currentTimeMillis()), agentState = previousState, isLoading = false, errorMessage = "AI 보완에 실패했습니다. 기존 작업 후보를 유지합니다.") }
             }
         }

@@ -4,6 +4,7 @@ import com.samsung.smartclipboard.domain.model.DataItem
 import com.samsung.smartclipboard.domain.model.RetrievalPlan
 import com.samsung.smartclipboard.domain.repository.DataRepository
 import com.samsung.smartclipboard.domain.retrieval.DataRetriever
+import com.samsung.smartclipboard.util.AgentTraceLogger
 import kotlinx.coroutines.flow.first
 
 /**
@@ -20,7 +21,19 @@ class LocalDataRetriever(
         val allItems = dataRepository.observeItems().first()
         val effectiveMax = safeMaxResults(plan.maxResults)
 
-        return allItems
+        AgentTraceLogger.event(
+            stage = "local_retriever",
+            message = "start",
+            details = mapOf(
+                "allItemCount" to allItems.size,
+                "keywords" to plan.keywords,
+                "typeFilters" to plan.typeFilters,
+                "dateRangeDays" to plan.dateRangeDays,
+                "maxResults" to effectiveMax
+            )
+        )
+
+        val result = allItems
             .asSequence()
             .filter { item -> typeFilterPass(item, plan.typeFilters) }
             .filter { item -> dateRangePass(item, plan.dateRangeDays) }
@@ -36,6 +49,16 @@ class LocalDataRetriever(
             .map { it.first }
             .take(effectiveMax)
             .toList()
+
+        AgentTraceLogger.event(
+            stage = "local_retriever",
+            message = "complete",
+            details = mapOf(
+                "resultCount" to result.size,
+                "resultIds" to result.map { it.id }
+            )
+        )
+        return result
     }
 
     // --- private helpers ---

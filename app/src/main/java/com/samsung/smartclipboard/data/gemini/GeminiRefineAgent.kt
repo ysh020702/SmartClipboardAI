@@ -6,6 +6,7 @@ import com.samsung.smartclipboard.domain.ai.GeminiManager
 import com.samsung.smartclipboard.domain.model.AgentActionDraft
 import com.samsung.smartclipboard.domain.model.CandidateItem
 import com.samsung.smartclipboard.domain.model.RetrievalPlan
+import com.samsung.smartclipboard.util.AgentTraceLogger
 
 class GeminiRefineAgent(
     private val geminiManager: GeminiManager,
@@ -27,23 +28,47 @@ class GeminiRefineAgent(
         return try {
             val selectedItemsForPrompt = selectedItems.take(10)
             val currentActionsForPrompt = currentActions.take(5)
+            AgentTraceLogger.event(
+                stage = "refine_agent",
+                message = "start",
+                details = mapOf(
+                    "topicQuery" to topicQuery,
+                    "feedback" to feedback,
+                    "selectedItemIds" to selectedItemsForPrompt.map { it.item.id },
+                    "currentActionCount" to currentActionsForPrompt.size
+                )
+            )
             val prompt = GeminiRefinePrompt.build(topicQuery, plan, selectedItemsForPrompt, currentActionsForPrompt, feedback)
+            AgentTraceLogger.prompt("refine_agent", prompt)
             val rawResponse = geminiManager.run(prompt)
+            AgentTraceLogger.rawResponse("refine_agent", rawResponse)
 
             val parseResult = GeminiActionPlannerJsonParser.parseActions(rawResponse, selectedItemsForPrompt)
             parseResult.fold(
                 onSuccess = { actions ->
+                    AgentTraceLogger.parsed(
+                        stage = "refine_agent",
+                        message = "refined actions",
+                        details = mapOf(
+                            "actionCount" to actions.size,
+                            "actions" to actions.map { "${it.type}:${it.title}" },
+                            "sourceItemIds" to actions.map { it.sourceItemIds }
+                        )
+                    )
                     if (validateActions(actions, selectedItemsForPrompt)) {
                         Result.success(actions)
                     } else {
+                        AgentTraceLogger.fallback("refine_agent", "invalid_parsed_actions")
                         fallbackAgent.refineActions(topicQuery, plan, selectedItems, currentActions, feedback)
                     }
                 },
-                onFailure = {
+                onFailure = { error ->
+                    AgentTraceLogger.fallback("refine_agent", "parse_failed", error)
                     fallbackAgent.refineActions(topicQuery, plan, selectedItems, currentActions, feedback)
                 }
             )
         } catch (e: Exception) {
+            AgentTraceLogger.fallback("refine_agent", "gemini_exception", e)
             fallbackAgent.refineActions(topicQuery, plan, selectedItems, currentActions, feedback)
         }
     }

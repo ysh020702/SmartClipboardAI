@@ -4,6 +4,7 @@ import com.samsung.smartclipboard.domain.model.CandidateItem
 import com.samsung.smartclipboard.domain.model.DataItem
 import com.samsung.smartclipboard.domain.model.RetrievalPlan
 import com.samsung.smartclipboard.domain.retrieval.CandidateItemRanker
+import com.samsung.smartclipboard.util.AgentTraceLogger
 
 /**
  * 순수 Kotlin 기반 CandidateItem 점수 부여 구현체.
@@ -20,7 +21,17 @@ class LocalCandidateItemRanker : CandidateItemRanker {
     ): List<CandidateItem> {
         val allKeywords = buildAllKeywords(topicQuery, plan.keywords)
 
-        return items
+        AgentTraceLogger.event(
+            stage = "candidate_ranker",
+            message = "start",
+            details = mapOf(
+                "topicQuery" to topicQuery,
+                "inputCount" to items.size,
+                "keywords" to allKeywords
+            )
+        )
+
+        val result = items
             .map { item ->
                 val score = calculateScore(item, plan, allKeywords)
                 val reason = buildReason(item, plan, allKeywords)
@@ -34,6 +45,16 @@ class LocalCandidateItemRanker : CandidateItemRanker {
                 compareByDescending<CandidateItem> { it.relevanceScore }
                     .thenByDescending { it.item.createdAt }
             )
+
+        AgentTraceLogger.event(
+            stage = "candidate_ranker",
+            message = "complete",
+            details = mapOf(
+                "resultCount" to result.size,
+                "topCandidates" to result.take(10).map { "${it.item.id}:${it.relevanceScore}" }
+            )
+        )
+        return result
     }
 
     // --- private helpers ---

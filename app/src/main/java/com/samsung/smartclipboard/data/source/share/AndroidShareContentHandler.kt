@@ -40,10 +40,12 @@ class AndroidShareContentHandler @Inject constructor(
         val text = intent.getStringExtra(Intent.EXTRA_TEXT)?.trim()
         val title = intent.getStringExtra(Intent.EXTRA_TITLE)
             ?: intent.getStringExtra(Intent.EXTRA_SUBJECT)
+        // HTML 텍스트도 확인 (브라우저 공유 시 URL 포함)
+        val htmlText = intent.getStringExtra(Intent.EXTRA_HTML_TEXT)
 
         // Try text first
         if (!text.isNullOrBlank()) {
-            return saveTextOrLink(text, title)
+            return saveTextOrLink(text, title, htmlText)
         }
 
         // Try stream/file
@@ -66,10 +68,11 @@ class AndroidShareContentHandler @Inject constructor(
         if (uris.isNullOrEmpty()) {
             // Try text as fallback
             val text = intent.getStringExtra(Intent.EXTRA_TEXT)?.trim()
+            val htmlText = intent.getStringExtra(Intent.EXTRA_HTML_TEXT)
             if (!text.isNullOrBlank()) {
                 val title = intent.getStringExtra(Intent.EXTRA_TITLE)
                     ?: intent.getStringExtra(Intent.EXTRA_SUBJECT)
-                return saveTextOrLink(text, title)
+                return saveTextOrLink(text, title, htmlText)
             }
             return ShareSaveResult(
                 savedCount = 0,
@@ -111,19 +114,40 @@ class AndroidShareContentHandler @Inject constructor(
         }
     }
 
-    private suspend fun saveTextOrLink(text: String, title: String?): ShareSaveResult {
-        val lower = text.trim()
-        val isLink = lower.startsWith("http://") ||
-                lower.startsWith("https://") ||
-                lower.startsWith("www.")
-
-        if (isLink) {
-            val url = if (lower.startsWith("www.")) {
-                "https://$lower"
-            } else {
-                lower
-            }
-            dataRepository.addLink(url, title, source = "share")
+    private suspend fun saveTextOrLink(text: String, title: String?, htmlText: String? = null): ShareSaveResult {
+        val trimmedText = text.trim()
+        
+        // 1. HTML 텍스트에서 URL 추출 시도 (브라우저 공유 시)
+        val htmlUrl = extractUrlFromHtml(htmlText)
+        if (htmlUrl != null) {
+            dataRepository.addLink(htmlUrl, title, source = "share")
+            return ShareSaveResult(
+                savedCount = 1,
+                message = "Link saved",
+                isSuccess = true
+            )
+        }
+        
+        // 2. 텍스트에서 URL 추출 시도
+        val extractedUrl = extractUrl(trimmedText)
+        
+        // 3. URL 로 판단할 조건:
+        // - 추출된 URL 이 있고 텍스트가 짧으면 (200 자 이내)
+        // - "출처:" 패턴이 있으면
+        // - URL 이 텍스트 시작 부분에 있으면
+        
+        val isShortText = trimmedText.length <= 200
+        val hasUrlAtStart = trimmedText.startsWith("http://") || 
+                           trimmedText.startsWith("https://") || 
+                           trimmedText.startsWith("www.")
+        val hasSourcePattern = trimmedText.contains(Regex("^출처 [:\\s]*", RegexOption.IGNORE_CASE))
+        val hasUrlPattern = extractedUrl != null
+        
+        // URL 이 있고 (짧거나 출처 패턴이면) 링크로 저장
+        val shouldSaveAsLink = extractedUrl != null && (isShortText || hasUrlAtStart || hasSourcePattern)
+        
+        if (shouldSaveAsLink) {
+            dataRepository.addLink(extractedUrl, title, source = "share")
             return ShareSaveResult(
                 savedCount = 1,
                 message = "Link saved",
@@ -131,12 +155,57 @@ class AndroidShareContentHandler @Inject constructor(
             )
         }
 
+        // 그 외에는 텍스트로 저장
         dataRepository.addText(text, source = "share")
         return ShareSaveResult(
             savedCount = 1,
             message = "Text saved",
             isSuccess = true
         )
+    }
+
+    /**
+     * HTML 텍스트에서 href URL 을 추출합니다.
+     */
+    private fun extractUrlFromHtml(htmlText: String?): String? {
+        if (htmlText.isNullOrBlank()) return null
+        
+        // HTML href 에서 URL 추출: href="..." 또는 href='...'
+        val hrefPattern = Regex("href=[\"'](https?://[^\"']+)[\"']")
+        val match = hrefPattern.find(htmlText)
+        return match?.groupValues?.get(1)
+    }
+
+    /**
+     * 텍스트에서 URL 을 추출합니다.
+     * @param text 추출할 텍스트
+     * @return URL 이 발견되면 URL 문자열, 아니면 null
+     */
+    private fun extractUrl(text: String): String? {
+        // URL 패턴: http://, https://, www. 로 시작
+        val urlPattern = Regex("(https?://|www\\.)[\\w\\-._~:/?#\\[\\]@!$&'()*+,;=%]+")
+        
+        // "출처: ~" 패턴에서 URL 추출
+        val sourcePattern = Regex("출처 [:\\s]*(https?://|www\\.)[\\w\\-._~:/?#\\[\\]@!$&'()*+,;=%]+", RegexOption.IGNORE_CASE)
+        
+        // 먼저 출처 패턴 확인
+        val sourceMatch = sourcePattern.find(text)
+        if (sourceMatch != null) {
+            val url = sourceMatch.groupValues[0]
+                .replace(Regex("^출처 [:\\s]*", RegexOption.IGNORE_CASE), "")
+                .trim()
+            return if (url.startsWith("www.")) "https://$url" else url
+        }
+        
+        // 일반 URL 패턴 확인
+        val match = urlPattern.find(text)
+        return match?.value?.let { url ->
+            if (url.startsWith("www.")) {
+                "https://$url"
+            } else {
+                url
+            }
+        }
     }
 
     private suspend fun saveStream(uri: Uri, type: String?): ShareSaveResult {

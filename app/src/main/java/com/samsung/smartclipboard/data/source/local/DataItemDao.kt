@@ -21,6 +21,9 @@ interface DataItemDao {
     @Query("UPDATE data_items SET createdAt = :createdAt WHERE content = :content AND type = :type")
     suspend fun updateCreatedAtByContentAndType(content: String, type: String, createdAt: Long)
 
+    @Query("UPDATE data_items SET extractedContent = :extractedContent WHERE id = :id")
+    suspend fun updateExtractedContent(id: Long, extractedContent: String)
+
     @Query("DELETE FROM data_items")
     suspend fun clearAll()
 }

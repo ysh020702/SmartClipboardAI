@@ -1,6 +1,8 @@
 package com.samsung.smartclipboard.data.ai
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.net.Uri
 import com.google.android.gms.tasks.Tasks
 import com.google.mlkit.vision.common.InputImage
@@ -26,13 +28,31 @@ class DefaultSourceExtractor @Inject constructor(
     override suspend fun extractFromOcr(uriString: String): String = withContext(Dispatchers.IO) {
         return@withContext try {
             val uri = Uri.parse(uriString)
-            val image = InputImage.fromFilePath(context, uri)
+            val image = loadAndCropBitmap(uri)
             val result = Tasks.await(ocrRecognizer.process(image))
             result.text
         } catch (e: Exception) {
             e.printStackTrace()
             ""
         }
+    }
+
+    private fun loadAndCropBitmap(uri: Uri, cropVerticalPercent: Float = 0.1f): InputImage {
+        val inputStream = context.contentResolver.openInputStream(uri)
+        val original = BitmapFactory.decodeStream(inputStream)
+        inputStream?.close()
+
+        val cropTop = (original.height * cropVerticalPercent).toInt()
+        val cropBottom = (original.height * cropVerticalPercent).toInt()
+        val cropHeight = original.height - cropTop - cropBottom
+
+        val croppedBitmap = if (cropHeight <= 0) {
+            original
+        } else {
+            Bitmap.createBitmap(original, 0, cropTop, original.width, cropHeight)
+        }
+
+        return InputImage.fromBitmap(croppedBitmap, 0)
     }
 
     override suspend fun extractFromUrl(url: String): String = withContext(Dispatchers.IO) {

@@ -12,5 +12,6 @@ data class DataItemEntity(
     val title: String? = null,
     val source: String? = null,
     val mimeType: String? = null,
-    val createdAt: Long
+    val createdAt: Long,
+    val extractedContent: String? = null
 )

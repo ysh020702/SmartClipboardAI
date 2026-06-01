@@ -176,7 +176,9 @@ fun MainScreen(
                 .padding(innerPadding)
         ) {
             when (uiState.screenMode) {
-                MainScreenMode.HOME -> AgentSessionScreen()
+                MainScreenMode.HOME -> AgentSessionScreen(
+                    onRequestMediaPermission=onRequestMediaPermission
+                )
 
                 MainScreenMode.DATA -> DataBrowser(
                     uiState = uiState,
@@ -195,7 +197,6 @@ fun MainScreen(
                     onCreateCalendarDraft = onCreateCalendarDraft
                 )
 
-                MainScreenMode.AGENT -> AgentSessionScreen()
             }
         }
     }
@@ -311,7 +312,6 @@ private fun MainTopBar(
                         .firstOrNull { it.id == uiState.selectedTopicId }
                         ?.title
                         ?: "주제 상세"
-                    MainScreenMode.AGENT -> "AI 에이전트"
                 }
             )
         },
@@ -396,17 +396,6 @@ private fun MainBottomBar(
             },
             label = { Text("작업") }
         )
-        NavigationBarItem(
-            selected = uiState.screenMode == MainScreenMode.AGENT,
-            onClick = { onIntent(MainIntent.OpenAgent) },
-            icon = {
-                OneUiNavIcon(
-                    mode = MainScreenMode.AGENT,
-                    selected = uiState.screenMode == MainScreenMode.AGENT
-                )
-            },
-            label = { Text("AI") }
-        )
     }
 }
 
@@ -488,27 +477,6 @@ private fun OneUiNavIcon(
                 )
             }
 
-            MainScreenMode.AGENT -> {
-                drawCircle(
-                    color = color,
-                    radius = size.width * 0.28f,
-                    center = Offset(size.width * 0.50f, size.height * 0.42f)
-                )
-                drawLine(
-                    color = color,
-                    start = Offset(size.width * 0.42f, size.height * 0.42f),
-                    end = Offset(size.width * 0.35f, size.height * 0.42f),
-                    strokeWidth = stroke.width,
-                    cap = StrokeCap.Round
-                )
-                drawLine(
-                    color = color,
-                    start = Offset(size.width * 0.58f, size.height * 0.42f),
-                    end = Offset(size.width * 0.65f, size.height * 0.42f),
-                    strokeWidth = stroke.width,
-                    cap = StrokeCap.Round
-                )
-            }
         }
     }
 }
@@ -1261,71 +1229,6 @@ private fun EmptyDataMessage(modifier: Modifier = Modifier) {
             .fillMaxWidth()
             .padding(32.dp)
     )
-}
-
-@Composable
-private fun ScreenshotImportBanner(
-    uiState: MainUiState,
-    onIntent: (MainIntent) -> Unit,
-    onRequestMediaPermission: () -> Unit
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = "스크린샷 가져오기",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            if (uiState.showMediaPermissionBanner) {
-                Text(
-                    text = "이미지 접근을 허용하면 최근 스크린샷을 수집할 수 있어요.",
-                    style = MaterialTheme.typography.bodySmall
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Button(onClick = onRequestMediaPermission) {
-                    Text("권한 허용")
-                }
-            } else if (uiState.isMediaImporting) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "스크린샷을 살펴보는 중...",
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
-            } else {
-                Text(
-                    text = "최근 스크린샷을 다시 확인합니다.",
-                    style = MaterialTheme.typography.bodySmall
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Button(onClick = { onIntent(MainIntent.ImportRecentScreenshots) }) {
-                    Text("다시 스캔")
-                }
-            }
-            uiState.mediaImportMessage?.let { message ->
-                Spacer(modifier = Modifier.height(6.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = message,
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Medium,
-                        modifier = Modifier.weight(1f)
-                    )
-                    TextButton(onClick = { onIntent(MainIntent.DismissMediaImportMessage) }) {
-                        Text("닫기", style = MaterialTheme.typography.labelSmall)
-                    }
-                }
-            }
-        }
-    }
 }
 
 @Composable

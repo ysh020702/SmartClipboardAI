@@ -18,8 +18,7 @@ enum class MainScreenMode {
     HOME,
     DATA,
     TASKS,
-    TOPIC_DETAIL,
-    AGENT
+    TOPIC_DETAIL
 }
 
 enum class TopicDetailTab {
@@ -110,5 +109,4 @@ sealed interface MainIntent {
     data class UpdateTopicActionDraft(val actionId: Long, val title: String, val body: String) : MainIntent
     data object DismissHandoffMessage : MainIntent
     data class HandoffActionCompleted(val message: String, val isSuccess: Boolean = true) : MainIntent
-    data object OpenAgent : MainIntent
 }

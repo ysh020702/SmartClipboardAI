@@ -38,13 +38,14 @@ import java.util.Calendar
 
 @Composable
 fun AgentSessionScreen(
-    viewModel: AgentSessionViewModel = hiltViewModel()
+    viewModel: AgentSessionViewModel = hiltViewModel(),
+    onRequestMediaPermission: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
     AgentSessionScreen(
         uiState = uiState,
         onIntent = viewModel::onIntent,
-        onRequestMediaPermission = {}
+        onRequestMediaPermission = onRequestMediaPermission
     )
 }
 

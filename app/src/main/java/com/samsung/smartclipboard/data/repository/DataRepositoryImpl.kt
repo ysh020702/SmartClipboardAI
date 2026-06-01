@@ -9,6 +9,7 @@ import com.samsung.smartclipboard.data.model.TopicItemCrossRefEntity
 import com.samsung.smartclipboard.data.source.local.DataItemDao
 import com.samsung.smartclipboard.data.source.local.TopicDao
 import com.samsung.smartclipboard.data.source.local.TopicSummaryRow
+import com.samsung.smartclipboard.domain.ai.SourceExtractor
 import com.samsung.smartclipboard.domain.ai.TopicAgent
 import com.samsung.smartclipboard.domain.model.DataItem
 import com.samsung.smartclipboard.domain.model.DataItemType

@@ -1,5 +1,6 @@
 package com.samsung.smartclipboard.data.repository
 
+import android.util.Log
 import com.samsung.smartclipboard.data.model.DataItemEntity
 import com.samsung.smartclipboard.data.model.TopicActionEntity
 import com.samsung.smartclipboard.data.model.TopicAnalysisEntity
@@ -25,7 +26,8 @@ import javax.inject.Inject
 class DataRepositoryImpl @Inject constructor(
     private val dataItemDao: DataItemDao,
     private val topicDao: TopicDao,
-    private val topicAgent: TopicAgent
+    private val topicAgent: TopicAgent,
+    private val sourceExtractor: SourceExtractor
 ) : DataRepository {
 
     override fun observeItems(): Flow<List<DataItem>> {

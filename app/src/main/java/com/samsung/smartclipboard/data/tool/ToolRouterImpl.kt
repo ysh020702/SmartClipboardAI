@@ -70,11 +70,11 @@ class ToolRouterImpl(
             if (toolRegistry.getTool(tn) != null) return tn
         }
         return when (action.type) {
+            TopicActionType.CALENDAR -> "insert_calendar_event"
+            TopicActionType.REMINDER -> "set_reminder"
+            TopicActionType.SUMMARY -> "save_note_share"
+            TopicActionType.TODO -> "save_note_share"
             TopicActionType.SHARE_DRAFT -> "share_text"
-            else -> {
-                val url = extractFirstHttpUrl("${action.title} ${action.body} ${action.payload.orEmpty()}")
-                if (url != null) "open_url" else "copy_to_clipboard"
-            }
         }
     }
 
@@ -103,6 +103,22 @@ class ToolRouterImpl(
             "save_note" -> mapOf(
                 "noteTitle" to capText(action.title, 200),
                 "noteBody" to capText(action.body, 10000)
+            )
+            "insert_calendar_event" -> mapOf(
+                "eventTitle" to capText(parsedPayload["eventTitle"] ?: action.title, 200),
+                "eventDescription" to capText(parsedPayload["eventDescription"] ?: action.body, 10000),
+                "eventBeginTime" to parsedPayload["eventBeginTime"].orEmpty(),
+                "eventEndTime" to parsedPayload["eventEndTime"].orEmpty(),
+                "eventLocation" to capText(parsedPayload["eventLocation"].orEmpty(), 200)
+            )
+            "save_note_share" -> mapOf(
+                "noteTitle" to capText(parsedPayload["noteTitle"] ?: action.title, 200),
+                "noteBody" to capText(parsedPayload["noteBody"] ?: action.body, 10000)
+            )
+            "set_reminder" -> mapOf(
+                "reminderTitle" to capText(parsedPayload["reminderTitle"] ?: action.title, 200),
+                "reminderDescription" to capText(parsedPayload["reminderDescription"] ?: action.body, 10000),
+                "reminderTime" to parsedPayload["reminderTime"].orEmpty()
             )
             else -> parsedPayload
         }

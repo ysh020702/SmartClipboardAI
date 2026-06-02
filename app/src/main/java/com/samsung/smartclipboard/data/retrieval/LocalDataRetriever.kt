@@ -47,7 +47,7 @@ class LocalDataRetriever(
     private fun buildSearchText(item: DataItem): String {
         return listOfNotNull(
             item.title,
-            item.content,
+            item.effectiveContent,
             item.source,
             item.mimeType
         ).joinToString(" ")

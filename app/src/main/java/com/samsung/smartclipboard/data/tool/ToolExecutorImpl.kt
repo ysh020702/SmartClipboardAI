@@ -419,6 +419,11 @@ class ToolExecutorImpl @Inject constructor(
                     success = true,
                     message = "캘린더 일정으로 알림 초안이 열렸습니다."
                 )
+            } catch (e: android.content.ActivityNotFoundException) {
+                ToolExecutionResult(
+                    resultId = UUID.randomUUID().toString(),
+                    sessionId = sessionId,
+                    
             } 
         }
     }

@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
+import android.util.Log
 import com.google.android.gms.tasks.Tasks
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
@@ -12,6 +13,9 @@ import com.samsung.smartclipboard.domain.ai.SourceExtractor
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import net.dankito.readability4j.Readability4J
+import okhttp3.OkHttpClient
+import okhttp3.Request
 import org.jsoup.Jsoup
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -55,17 +59,31 @@ class DefaultSourceExtractor @Inject constructor(
         return InputImage.fromBitmap(croppedBitmap, 0)
     }
 
-    override suspend fun extractFromUrl(url: String): String = withContext(Dispatchers.IO) {
-        return@withContext try {
-            val document = Jsoup.connect(url)
-                .userAgent("Mozilla/5.0")
-                .timeout(8000)
-                .get()
-            val mainContent = document.select("article, main, .content, #content, p")
-            if (mainContent.isNotEmpty()) mainContent.text() else document.body().text()
-        } catch (e: Exception) {
-            e.printStackTrace()
-            ""
+    override suspend fun extractFromUrl(url: String): String {
+        val correctionUrl = url.replace("blog.naver.com","m.blog.naver.com")
+        val client = OkHttpClient()
+
+        val request = Request.Builder()
+            .url(correctionUrl)
+            .header(
+                "User-Agent",
+                "Mozilla/5.0"
+            )
+            .build()
+
+        val html = withContext(Dispatchers.IO) {
+            client.newCall(request)
+                .execute()
+                .use {
+                    it.body?.string() ?: ""
+                }
         }
+
+        val article = Readability4J(
+            correctionUrl,
+            html
+        ).parse()
+
+        return article.textContent.toString()
     }
 }

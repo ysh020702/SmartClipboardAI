@@ -186,7 +186,6 @@ fun MainScreen(
                     uiState = uiState,
                     onIntent = onIntent
                 )
-
                 MainScreenMode.TASKS -> TasksHome(
                     uiState = uiState,
                     onIntent = onIntent
@@ -228,7 +227,6 @@ private fun TopicPipelineSheet(
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.outline
         )
-
         OutlinedTextField(
             value = uiState.handoffTitle,
             onValueChange = { onIntent(MainIntent.UpdateHandoffTitle(it)) },
@@ -690,7 +688,6 @@ private fun RecommendationsSection(
                         Text("데이터 선택 → Topic 만들기")
                     }
                 }
-
                 else -> {
                     Text(
                         text = "데이터가 조금 더 모이면 Topic 생성과 AI 분석을 시작할 수 있어요.",
@@ -1102,7 +1099,7 @@ private fun TopicMaterialCard(item: DataItem) {
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = item.title ?: contentPreview(item.content, item.type, item.title),
+                    text = item.title ?: contentPreview(item.effectiveContent, item.type, item.title),
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Medium,
                     maxLines = 1,
@@ -1112,7 +1109,7 @@ private fun TopicMaterialCard(item: DataItem) {
             }
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = contentPreview(item.content, item.type, item.title),
+                text = contentPreview(item.effectiveContent, item.type, item.title),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.outline,
                 maxLines = 3,
@@ -1586,7 +1583,7 @@ private fun CompactItemRow(item: DataItem) {
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = item.title ?: contentPreview(item.content, item.type, item.title),
+                text = item.title ?: contentPreview(item.effectiveContent, item.type, item.title),
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Medium,
                 maxLines = 1,
@@ -1688,7 +1685,7 @@ private fun ItemCard(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = item.title ?: item.content,
+                        text = item.title ?: item.effectiveContent,
                         style = MaterialTheme.typography.titleSmall,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -1698,10 +1695,9 @@ private fun ItemCard(
                         Text("삭제", color = MaterialTheme.colorScheme.error)
                     }
                 }
-
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = contentPreview(item.content, item.type, item.title),
+                    text = contentPreview(item.effectiveContent, item.type, item.title),
                     style = MaterialTheme.typography.bodyMedium,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
@@ -1740,7 +1736,7 @@ private fun todaySuggestionText(todayItems: List<DataItem>): String {
     }
 
     val hasDateLikeText = todayItems.any {
-        it.content.contains(Regex("\\d{1,2}:\\d{2}|\\d{4}[-/]\\d{1,2}[-/]\\d{1,2}|오전|오후"))
+        it.effectiveContent.contains(Regex("\\d{1,2}:\\d{2}|\\d{4}[-/]\\d{1,2}[-/]\\d{1,2}|오전|오후"))
     }
     val linkCount = todayItems.count { it.type == DataItemType.LINK }
     val screenshotCount = todayItems.count { it.type == DataItemType.SCREENSHOT }

@@ -115,7 +115,7 @@ internal object GeminiItemRecommendationPrompt {
                     .joinToString(" / ")
                     .take(300)
             }
-            else -> item.content.take(300)
+            else -> item.effectiveContent.take(300)
         }
     }
 

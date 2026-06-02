@@ -374,7 +374,31 @@ class ToolExecutorImpl @Inject constructor(
                 errorDetail = "empty_reminderTitle"
             )
         }
-        
+        val reminderDescription = payload["reminderDescription"].orEmpty()
+        val reminderTime = payload["reminderTime"]?.toLongOrNull()
+
+        // 1차: AlarmClock ACTION_SET_ALARM 시도
+        return try {
+            val alarmIntent = Intent(android.provider.AlarmClock.ACTION_SET_ALARM).apply {
+                putExtra(android.provider.AlarmClock.EXTRA_MESSAGE, reminderTitle)
+                if (reminderTime != null) {
+                    val calendar = java.util.Calendar.getInstance().apply {
+                        timeInMillis = reminderTime
+                    }
+                    putExtra(android.provider.AlarmClock.EXTRA_HOUR, calendar.get(java.util.Calendar.HOUR_OF_DAY))
+                    putExtra(android.provider.AlarmClock.EXTRA_MINUTES, calendar.get(java.util.Calendar.MINUTE))
+                }
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(alarmIntent)
+            ToolExecutionResult(
+                resultId = UUID.randomUUID().toString(),
+                sessionId = sessionId,
+                toolName = toolSpec.toolName,
+                success = true,
+                message = "알람/리마인더 앱이 열렸습니다."
+            )
+        } 
         }
     }
 }

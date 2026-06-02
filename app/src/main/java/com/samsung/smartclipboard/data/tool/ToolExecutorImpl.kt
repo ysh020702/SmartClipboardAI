@@ -304,4 +304,57 @@ class ToolExecutorImpl @Inject constructor(
             )
         }
     }
+
+    private fun executeSaveNoteShare(
+        sessionId: String,
+        toolSpec: ToolSpec,
+        payload: Map<String, String>
+    ): ToolExecutionResult {
+        val noteTitle = payload["noteTitle"]
+        val noteBody = payload["noteBody"]
+        if (noteTitle.isNullOrBlank()) {
+            return ToolExecutionResult(
+                resultId = UUID.randomUUID().toString(),
+                sessionId = sessionId,
+                toolName = toolSpec.toolName,
+                success = false,
+                message = "노트 제목이 필요합니다.",
+                errorDetail = "empty_noteTitle"
+            )
+        }
+        return try {
+            val shareContent = buildString {
+                append(noteTitle)
+                if (!noteBody.isNullOrBlank()) {
+                    append("\n\n")
+                    append(noteBody)
+                }
+            }
+            val intent = Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(Intent.EXTRA_SUBJECT, noteTitle)
+                putExtra(Intent.EXTRA_TEXT, shareContent)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            val chooser = Intent.createChooser(intent, "노트 앱으로 전달")
+            chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            context.startActivity(chooser)
+            ToolExecutionResult(
+                resultId = UUID.randomUUID().toString(),
+                sessionId = sessionId,
+                toolName = toolSpec.toolName,
+                success = true,
+                message = "공유 시트가 열렸습니다. 삼성 노트 등 노트 앱을 선택하세요."
+            )
+        } catch (e: Exception) {
+            ToolExecutionResult(
+                resultId = UUID.randomUUID().toString(),
+                sessionId = sessionId,
+                toolName = toolSpec.toolName,
+                success = false,
+                message = "노트 공유를 열지 못했습니다.",
+                errorDetail = e.message ?: "note_share_failed"
+            )
+        }
+    }
 }

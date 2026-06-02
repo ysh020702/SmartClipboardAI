@@ -183,7 +183,7 @@ private fun CandidateItemCard(
             Column(modifier = Modifier.weight(1f)) {
                 // Title or content preview
                 val displayTitle = item.title?.takeIf { it.isNotBlank() }
-                    ?: item.content.take(120).replace("\n", " ")
+                    ?: item.effectiveContent.take(120).replace("\n", " ")
                 Text(
                     text = displayTitle,
                     style = MaterialTheme.typography.bodyMedium,

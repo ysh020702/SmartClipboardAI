@@ -31,6 +31,9 @@ class ToolExecutorImpl @Inject constructor(
                 "open_url" -> executeOpenUrl(sessionId, toolSpec, payload)
                 "compose_email" -> executeComposeEmail(sessionId, toolSpec, payload)
                 "save_note" -> executeSaveNote(sessionId, toolSpec, payload)
+                "insert_calendar_event" -> executeInsertCalendarEvent(sessionId, toolSpec, payload)
+                "save_note_share" -> executeSaveNoteShare(sessionId, toolSpec, payload)
+                "set_reminder" -> executeSetReminder(sessionId, toolSpec, payload)
                 else -> ToolExecutionResult(
                     resultId = UUID.randomUUID().toString(),
                     sessionId = sessionId,

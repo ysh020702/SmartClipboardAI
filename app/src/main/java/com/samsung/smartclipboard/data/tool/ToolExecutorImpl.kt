@@ -398,7 +398,28 @@ class ToolExecutorImpl @Inject constructor(
                 success = true,
                 message = "알람/리마인더 앱이 열렸습니다."
             )
-        } 
+        } catch (_: Exception) {
+            // 2차: 캘린더 일정으로 fallback
+            try {
+                val fallbackIntent = Intent(Intent.ACTION_INSERT).apply {
+                    data = CalendarContract.Events.CONTENT_URI
+                    putExtra(CalendarContract.Events.TITLE, reminderTitle)
+                    putExtra(CalendarContract.Events.DESCRIPTION, reminderDescription)
+                    if (reminderTime != null) {
+                        putExtra(CalendarContract.EXTRA_EVENT_BEGIN_TIME, reminderTime)
+                        putExtra(CalendarContract.EXTRA_EVENT_END_TIME, reminderTime + 60 * 60 * 1000L)
+                    }
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                context.startActivity(fallbackIntent)
+                ToolExecutionResult(
+                    resultId = UUID.randomUUID().toString(),
+                    sessionId = sessionId,
+                    toolName = toolSpec.toolName,
+                    success = true,
+                    message = "캘린더 일정으로 알림 초안이 열렸습니다."
+                )
+            } 
         }
     }
 }

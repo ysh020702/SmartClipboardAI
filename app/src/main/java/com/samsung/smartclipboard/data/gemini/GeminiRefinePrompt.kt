@@ -104,9 +104,9 @@ internal object GeminiRefinePrompt {
     }
 
     private fun contentPreview(item: com.samsung.smartclipboard.domain.model.DataItem): String = when (item.type) {
-        DataItemType.IMAGE, DataItemType.SCREENSHOT, DataItemType.FILE ->
-            listOfNotNull(item.title, item.source, item.mimeType).joinToString(" / ").take(350)
-        else -> item.content.take(350)
+       DataItemType.FILE ->
+            listOfNotNull(item.title, item.source, item.mimeType).joinToString(" / ").take(1000)
+        else -> item.effectiveContent.take(1000)
     }
 
     private fun fmt(millis: Long): String = try { dateFormat.format(Date(millis)) } catch (_: Exception) { millis.toString() }

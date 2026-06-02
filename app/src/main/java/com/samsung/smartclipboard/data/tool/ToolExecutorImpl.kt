@@ -423,8 +423,9 @@ class ToolExecutorImpl @Inject constructor(
                 ToolExecutionResult(
                     resultId = UUID.randomUUID().toString(),
                     sessionId = sessionId,
+                    toolName = toolSpec.toolName,
+                    success = false,
                     
-            } 
         }
     }
 }

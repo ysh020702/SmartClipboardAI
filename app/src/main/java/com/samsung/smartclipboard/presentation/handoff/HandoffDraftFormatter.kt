@@ -46,6 +46,9 @@ object HandoffDraftFormatter {
             sb.appendLine("[$typeLabel] ${item.title ?: contentPreview(item)}")
             if (item.type == DataItemType.LINK) {
                 sb.appendLine(item.content)
+                if (!item.extractedContent.isNullOrBlank()) {
+                    sb.appendLine(item.extractedContent.take(500))
+                }
             } else if (item.type != DataItemType.IMAGE && item.type != DataItemType.SCREENSHOT) {
                 sb.appendLine(contentPreview(item))
             }
@@ -77,7 +80,7 @@ object HandoffDraftFormatter {
     }
 
     private fun contentPreview(item: DataItem): String {
-        val content = item.content
+        val content = item.effectiveContent
         if (content.startsWith("content://") || content.startsWith("file://")) {
             val name = content.substringAfterLast("/")
             if (name.isNotBlank()) return name

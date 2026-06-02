@@ -29,7 +29,7 @@ class FallbackActionPlanner : ActionPlanner {
             .flatMap { c ->
                 listOfNotNull(
                     c.item.title,
-                    c.item.content.take(200),
+                    c.item.effectiveContent.take(200),
                     c.item.source
                 )
             }
@@ -72,7 +72,7 @@ class FallbackActionPlanner : ActionPlanner {
 
         // TODO
         val todoBody = selectedItems.joinToString("\n") { c ->
-            "- ${c.item.title ?: c.item.content.take(80)}"
+            "- ${c.item.title ?: c.item.effectiveContent.take(80)}"
         }.take(400)
         actions.add(
             AgentActionDraft(
@@ -93,7 +93,7 @@ class FallbackActionPlanner : ActionPlanner {
             "회의", "미팅", "마감", "due", "schedule"
         )
         val hasDateClue = selectedItems.any { c ->
-            val text = (c.item.title ?: "") + c.item.content
+            val text = (c.item.title ?: "") + c.item.effectiveContent
             dateKeywords.any { text.contains(it) }
         }
         if (hasDateClue) {
@@ -104,7 +104,7 @@ class FallbackActionPlanner : ActionPlanner {
                     reason = "선택된 데이터에 날짜/시간 단서가 있습니다.",
                     title = "${topicQuery} 일정 등록",
                     body = selectedItems.joinToString("\n") { c ->
-                        "- ${c.item.title ?: c.item.content.take(120)}"
+                        "- ${c.item.title ?: c.item.effectiveContent.take(120)}"
                     },
                     payload = null,
                     sourceItemIds = itemIds
@@ -140,7 +140,7 @@ class FallbackActionPlanner : ActionPlanner {
         sb.appendLine()
         selectedItems.take(5).forEach { candidate ->
             val item = candidate.item
-            val label = item.title ?: item.content.take(100)
+            val label = item.title ?: item.effectiveContent.take(100)
             sb.appendLine("- $label")
             item.source?.let { sb.appendLine("  출처: $it") }
         }

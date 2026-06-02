@@ -357,4 +357,24 @@ class ToolExecutorImpl @Inject constructor(
             )
         }
     }
+
+    private fun executeSetReminder(
+        sessionId: String,
+        toolSpec: ToolSpec,
+        payload: Map<String, String>
+    ): ToolExecutionResult {
+        val reminderTitle = payload["reminderTitle"]
+        if (reminderTitle.isNullOrBlank()) {
+            return ToolExecutionResult(
+                resultId = UUID.randomUUID().toString(),
+                sessionId = sessionId,
+                toolName = toolSpec.toolName,
+                success = false,
+                message = "알림 제목이 필요합니다.",
+                errorDetail = "empty_reminderTitle"
+            )
+        }
+        
+        }
+    }
 }

@@ -96,9 +96,9 @@ internal object GeminiClusterTopicPrompt {
 
     private fun contentPreview(item: DataItem): String {
         return when (item.type) {
-            DataItemType.IMAGE, DataItemType.SCREENSHOT, DataItemType.FILE ->
-                listOfNotNull(item.title, item.source, item.mimeType).joinToString(" / ").take(250)
-            else -> item.content.take(250)
+            DataItemType.FILE ->
+                listOfNotNull(item.title, item.source, item.mimeType).joinToString(" / ").take(1000)
+            else -> item.effectiveContent.take(1000)
         }
     }
 

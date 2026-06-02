@@ -22,7 +22,7 @@ class FallbackClusterTopicAgent : ClusterTopicAgent {
                 val label = cluster.clusterLabel.ifBlank {
                     val sampleIds = validIds.take(3)
                     sampleIds.joinToString(" · ") { id ->
-                        itemById[id]?.title ?: itemById[id]?.content?.take(30) ?: id.toString()
+                        itemById[id]?.title ?: itemById[id]?.effectiveContent?.take(30) ?: id.toString()
                     }
                 }
                 val cappedLabel = if (label.length > 40) label.take(40) + "..." else label

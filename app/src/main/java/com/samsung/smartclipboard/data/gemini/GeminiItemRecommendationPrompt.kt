@@ -108,14 +108,12 @@ internal object GeminiItemRecommendationPrompt {
     private fun contentPreview(item: com.samsung.smartclipboard.domain.model.DataItem): String {
         // 이미지/파일 타입은 content가 바이너리성일 수 있으므로 title/source/mimeType 중심
         return when (item.type) {
-            DataItemType.IMAGE,
-            DataItemType.SCREENSHOT,
             DataItemType.FILE -> {
                 listOfNotNull(item.title, item.source, item.mimeType)
                     .joinToString(" / ")
-                    .take(300)
+                    .take(1000)
             }
-            else -> item.effectiveContent.take(300)
+            else -> item.effectiveContent.take(1000)
         }
     }
 

@@ -102,14 +102,12 @@ internal object GeminiActionPlannerPrompt {
 
     private fun contentPreview(item: com.samsung.smartclipboard.domain.model.DataItem): String {
         return when (item.type) {
-            DataItemType.IMAGE,
-            DataItemType.SCREENSHOT,
             DataItemType.FILE -> {
                 listOfNotNull(item.title, item.source, item.mimeType)
                     .joinToString(" / ")
-                    .take(400)
+                    .take(1000)
             }
-            else -> item.content.take(400)
+            else -> item.effectiveContent.take(1000)
         }
     }
 

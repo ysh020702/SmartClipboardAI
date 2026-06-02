@@ -242,4 +242,66 @@ class ToolExecutorImpl @Inject constructor(
             errorDetail = "save_note_unsupported_without_existing_repository_api"
         )
     }
+
+    private fun executeInsertCalendarEvent(
+        sessionId: String,
+        toolSpec: ToolSpec,
+        payload: Map<String, String>
+    ): ToolExecutionResult {
+        val eventTitle = payload["eventTitle"]
+        if (eventTitle.isNullOrBlank()) {
+            return ToolExecutionResult(
+                resultId = UUID.randomUUID().toString(),
+                sessionId = sessionId,
+                toolName = toolSpec.toolName,
+                success = false,
+                message = "일정 제목이 필요합니다.",
+                errorDetail = "empty_eventTitle"
+            )
+        }
+        return try {
+            val now = System.currentTimeMillis()
+            val beginTime = payload["eventBeginTime"]?.toLongOrNull() ?: (now + 60 * 60 * 1000L)
+            val endTime = payload["eventEndTime"]?.toLongOrNull() ?: (beginTime + 60 * 60 * 1000L)
+
+            val intent = Intent(Intent.ACTION_INSERT).apply {
+                data = CalendarContract.Events.CONTENT_URI
+                putExtra(CalendarContract.Events.TITLE, eventTitle)
+                putExtra(CalendarContract.Events.DESCRIPTION, payload["eventDescription"].orEmpty())
+                putExtra(CalendarContract.EXTRA_EVENT_BEGIN_TIME, beginTime)
+                putExtra(CalendarContract.EXTRA_EVENT_END_TIME, endTime)
+                val location = payload["eventLocation"]
+                if (!location.isNullOrBlank()) {
+                    putExtra(CalendarContract.Events.EVENT_LOCATION, location)
+                }
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(intent)
+            ToolExecutionResult(
+                resultId = UUID.randomUUID().toString(),
+                sessionId = sessionId,
+                toolName = toolSpec.toolName,
+                success = true,
+                message = "캘린더 일정 초안이 열렸습니다."
+            )
+        } catch (e: android.content.ActivityNotFoundException) {
+            ToolExecutionResult(
+                resultId = UUID.randomUUID().toString(),
+                sessionId = sessionId,
+                toolName = toolSpec.toolName,
+                success = false,
+                message = "캘린더 앱을 찾을 수 없습니다.",
+                errorDetail = "no_calendar_app: ${e.message}"
+            )
+        } catch (e: Exception) {
+            ToolExecutionResult(
+                resultId = UUID.randomUUID().toString(),
+                sessionId = sessionId,
+                toolName = toolSpec.toolName,
+                success = false,
+                message = "캘린더 앱을 열지 못했습니다.",
+                errorDetail = e.message ?: "calendar_failed"
+            )
+        }
+    }
 }

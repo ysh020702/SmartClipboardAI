@@ -78,7 +78,7 @@ class LocalCandidateItemRanker : CandidateItemRanker {
     private fun matchKeywordCount(item: DataItem, keywords: List<String>): Int {
         val searchText = listOfNotNull(
             item.title,
-            item.content,
+            item.effectiveContent,
             item.source,
             item.mimeType
         ).joinToString(" ").lowercase().trim()
@@ -99,7 +99,7 @@ class LocalCandidateItemRanker : CandidateItemRanker {
         val matched = allKeywords.filter { kw ->
             val searchText = listOfNotNull(
                 item.title,
-                item.content,
+                item.effectiveContent,
                 item.source,
                 item.mimeType
             ).joinToString(" ").lowercase().trim()

@@ -102,7 +102,7 @@ class LocalClusterer : DataClusterer {
     private fun buildSearchText(item: DataItem): String {
         return listOfNotNull(
             item.title,
-            item.content.take(1000),
+            item.effectiveContent.take(1000),
             item.source,
             item.mimeType,
             item.type.name

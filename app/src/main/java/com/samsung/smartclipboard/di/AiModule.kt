@@ -10,6 +10,7 @@ import com.samsung.smartclipboard.domain.ai.GeminiManager
 import com.samsung.smartclipboard.domain.ai.SourceExtractor
 import com.samsung.smartclipboard.domain.ai.TopicAgent
 import com.samsung.smartclipboard.domain.repository.KnowledgeRepository
+import com.samsung.smartclipboard.BuildConfig
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
@@ -56,6 +57,6 @@ abstract class AiModule {
         @Provides
         @Singleton
         @Named("gemini_api_key")
-        fun provideGeminiApiKey(): String = "AIzaSyA9xmiPxuLnoV64tk8Cr8nyLtwgURmZq30"
+        fun provideGeminiApiKey(): String = BuildConfig.API_KEY
     }
 }

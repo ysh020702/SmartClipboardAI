@@ -425,6 +425,28 @@ class ToolExecutorImpl @Inject constructor(
                     sessionId = sessionId,
                     toolName = toolSpec.toolName,
                     success = false,
+                    message = "알람/리마인더 앱을 찾을 수 없습니다.",
+                    errorDetail = "no_reminder_app: ${e.message}"
+                )
+            } catch (e: Exception) {
+
+                ToolExecutionResult(
+
+                    resultId = UUID.randomUUID().toString(),
+
+                    sessionId = sessionId,
+
+                    toolName = toolSpec.toolName,
+
+                    success = false,
+
+                    message = "알림 설정을 열지 못했습니다.",
+
+                    errorDetail = e.message ?: "reminder_failed"
+
+                )
+
+            }
                     
         }
     }

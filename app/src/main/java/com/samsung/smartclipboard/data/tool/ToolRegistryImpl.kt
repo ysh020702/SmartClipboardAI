@@ -61,6 +61,43 @@ class ToolRegistryImpl : ToolRegistry {
                 RequiredInput(key = "noteTitle", label = "노트 제목", required = true),
                 RequiredInput(key = "noteBody", label = "노트 내용", required = true)
             )
+        ),
+        ToolSpec(
+            toolName = "insert_calendar_event",
+            description = "캘린더 앱에 일정 초안 생성 (삼성 캘린더 등)",
+            riskLevel = ToolRiskLevel.MEDIUM,
+            requiresConfirmation = true,
+            androidAction = "android.intent.action.INSERT",
+            requiredInputs = listOf(
+                RequiredInput(key = "eventTitle", label = "일정 제목", required = true),
+                RequiredInput(key = "eventDescription", label = "일정 설명", required = false),
+                RequiredInput(key = "eventBeginTime", label = "시작 시간 (epoch ms)", required = false),
+                RequiredInput(key = "eventEndTime", label = "종료 시간 (epoch ms)", required = false),
+                RequiredInput(key = "eventLocation", label = "장소", required = false)
+            )
+        ),
+        ToolSpec(
+            toolName = "save_note_share",
+            description = "공유 시트로 노트 앱에 전달 (삼성 노트 등)",
+            riskLevel = ToolRiskLevel.LOW,
+            requiresConfirmation = true,
+            androidAction = "android.intent.action.SEND",
+            requiredInputs = listOf(
+                RequiredInput(key = "noteTitle", label = "노트 제목", required = true),
+                RequiredInput(key = "noteBody", label = "노트 내용", required = true)
+            )
+        ),
+        ToolSpec(
+            toolName = "set_reminder",
+            description = "리마인더/알람 앱에 알림 초안 생성",
+            riskLevel = ToolRiskLevel.MEDIUM,
+            requiresConfirmation = true,
+            androidAction = "android.intent.action.INSERT",
+            requiredInputs = listOf(
+                RequiredInput(key = "reminderTitle", label = "알림 제목", required = true),
+                RequiredInput(key = "reminderDescription", label = "알림 설명", required = false),
+                RequiredInput(key = "reminderTime", label = "알림 시간 (epoch ms)", required = false)
+            )
         )
     )
 

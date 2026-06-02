@@ -10,9 +10,9 @@ class ToolRouterImplTest {
     private val registry = ToolRegistryImpl()
     private val router = ToolRouterImpl(registry)
 
-    // case 1: SUMMARY 기본 라우팅은 copy_to_clipboard
+    // case 1: SUMMARY 기본 라우팅은 save_note_share (노트 앱 공유)
     @Test
-    fun `route SUMMARY defaults to copy_to_clipboard`() {
+    fun `route SUMMARY defaults to save_note_share`() {
         val action = TestModelFactory.actionDraft(
             type = TopicActionType.SUMMARY,
             title = "회의 요약",
@@ -21,9 +21,9 @@ class ToolRouterImplTest {
         val result = router.route(action)
         assertTrue("라우팅 실패", result.isSuccess)
         val routeResult = result.getOrThrow()
-        assertEquals("copy_to_clipboard", routeResult.toolSpec.toolName)
-        val text = routeResult.resolvedPayload["textToCopy"]
-        assertTrue("textToCopy must not be null or blank", text?.isNotBlank() == true)
+        assertEquals("save_note_share", routeResult.toolSpec.toolName)
+        assertTrue(routeResult.resolvedPayload["noteTitle"]?.isNotBlank() == true)
+        assertTrue(routeResult.resolvedPayload["noteBody"]?.isNotBlank() == true)
     }
 
     // case 2: SHARE_DRAFT는 share_text
@@ -64,7 +64,7 @@ class ToolRouterImplTest {
         val action = TestModelFactory.actionDraft(
             type = TopicActionType.SUMMARY,
             title = "스크립트",
-            body = "javascript:alert(1)",
+            body = "JAVA-SCRIPT:alert(1)",
             payload = "{\"preferredTool\":\"open_url\"}"
         )
         val result = router.route(action)
@@ -86,15 +86,15 @@ class ToolRouterImplTest {
         val action = TestModelFactory.actionDraft(
             type = TopicActionType.SUMMARY,
             title = "",
-            body = "   "
+            body = " "
         )
         val result = router.route(action)
         assertTrue("blank title and body must fail", result.isFailure)
     }
 
-    // case 6: Todo 라우팅은 기본적으로 copy_to_clipboard
+    // case 6: Todo 라우팅은 기본적으로 save_note_share
     @Test
-    fun `route TODO defaults to copy_to_clipboard`() {
+    fun `route TODO defaults to save_note_share`() {
         val action = TestModelFactory.actionDraft(
             type = TopicActionType.TODO,
             title = "할 일 목록",
@@ -102,6 +102,36 @@ class ToolRouterImplTest {
         )
         val result = router.route(action)
         assertTrue(result.isSuccess)
-        assertEquals("copy_to_clipboard", result.getOrThrow().toolSpec.toolName)
+        assertEquals("save_note_share", result.getOrThrow().toolSpec.toolName)
+    }
+
+    // case 7: CALENDAR 라우팅은 insert_calendar_event
+    @Test
+    fun `route CALENDAR defaults to insert_calendar_event`() {
+        val action = TestModelFactory.actionDraft(
+            type = TopicActionType.CALENDAR,
+            title = "팀 미팅",
+            body = "오후 2시 팀 미팅"
+        )
+        val result = router.route(action)
+        assertTrue(result.isSuccess)
+        val routeResult = result.getOrThrow()
+        assertEquals("insert_calendar_event", routeResult.toolSpec.toolName)
+        assertTrue(routeResult.resolvedPayload["eventTitle"]?.isNotBlank() == true)
+    }
+
+    // case 8: REMINDER 라우팅은 set_reminder
+    @Test
+    fun `route REMINDER defaults to set_reminder`() {
+        val action = TestModelFactory.actionDraft(
+            type = TopicActionType.REMINDER,
+            title = "제출 마감",
+            body = "과제 제출 마감일"
+        )
+        val result = router.route(action)
+        assertTrue(result.isSuccess)
+        val routeResult = result.getOrThrow()
+        assertEquals("set_reminder", routeResult.toolSpec.toolName)
+        assertTrue(routeResult.resolvedPayload["reminderTitle"]?.isNotBlank() == true)
     }
 }

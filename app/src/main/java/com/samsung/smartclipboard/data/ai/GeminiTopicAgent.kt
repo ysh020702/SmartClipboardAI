@@ -55,10 +55,7 @@ class GeminiTopicAgent @Inject constructor(
                 append("id: ${item.id}\n")
                 append("type: ${item.type.name}\n")
                 if (!item.title.isNullOrBlank()) append("title: ${item.title}\n")
-                append("content: ${item.content.take(500)}\n")
-                if (!item.extractedContent.isNullOrBlank()) {
-                    append("extractedContent: ${item.extractedContent.take(2000)}\n")
-                }
+                append("content: ${item.effectiveContent.take(1000)}\n")
                 if (!item.source.isNullOrBlank()) append("source: ${item.source}\n")
             }
         }

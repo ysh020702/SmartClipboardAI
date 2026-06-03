@@ -60,7 +60,7 @@ class DefaultSourceExtractor @Inject constructor(
     }
 
     override suspend fun extractFromUrl(url: String): String {
-        val correctionUrl = url.replace("blog.naver.com","m.blog.naver.com")
+        val correctionUrl = url.replace("://blog.naver.com","://m.blog.naver.com")
         val client = OkHttpClient()
 
         val request = Request.Builder()

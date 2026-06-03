@@ -40,6 +40,7 @@ fun AgentSessionScreen(
     Scaffold { innerPadding ->
         Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
             when (val state = uiState.agentState) {
+                //평시 상태
                 is AgentSessionState.Idle -> {
                     Column(
                         modifier = Modifier
@@ -62,6 +63,7 @@ fun AgentSessionScreen(
                         )
                     }
                 }
+                //검색 기록 수립
                 is AgentSessionState.PlanningRetrieval -> TopicInputScreen(
                     topicQuery = uiState.topicQuery, isLoading = uiState.isLoading,
                     errorMessage = uiState.errorMessage,

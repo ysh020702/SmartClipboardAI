@@ -1,5 +1,6 @@
 package com.samsung.smartclipboard.ui.theme
 
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 
 val SamsungBlue = Color(0xFF0381FE)
@@ -40,3 +41,7 @@ object AppColors {
     val Border = Color(0xFFE8EDF8)
     val Red = Color(0xFFDC2626)
 }
+
+val BlueGradient = Brush.linearGradient(listOf(AppColors.BlueDeep, AppColors.Blue, Color(0xFF3B82F6)))
+val DarkGradient = Brush.linearGradient(listOf(Color(0xFF0F1F3D), Color(0xFF1A3660), AppColors.BlueDeep))
+

@@ -1,5 +1,6 @@
 package com.samsung.smartclipboard.presentation.tile
 
+import android.annotation.SuppressLint
 import android.app.PendingIntent
 import android.content.Intent
 import android.os.Build
@@ -19,7 +20,7 @@ class ClipboardCaptureTileService : TileService() {
             updateTile()
         }
     }
-
+    @SuppressLint("StartActivityAndCollapseDeprecated")
     override fun onClick() {
         super.onClick()
 

@@ -1,6 +1,8 @@
 package com.samsung.smartclipboard.data.repository
 
 import android.util.Log
+import com.samsung.smartclipboard.data.ai.DefaultSourceExtractor
+import com.samsung.smartclipboard.data.ai.GeminiTopicAgent
 import com.samsung.smartclipboard.data.model.DataItemEntity
 import com.samsung.smartclipboard.data.model.TopicActionEntity
 import com.samsung.smartclipboard.data.model.TopicAnalysisEntity
@@ -9,9 +11,6 @@ import com.samsung.smartclipboard.data.model.TopicItemCrossRefEntity
 import com.samsung.smartclipboard.data.source.local.DataItemDao
 import com.samsung.smartclipboard.data.source.local.TopicDao
 import com.samsung.smartclipboard.data.source.local.TopicSummaryRow
-import com.samsung.smartclipboard.domain.ai.PurposeAnalyzer
-import com.samsung.smartclipboard.domain.ai.SourceExtractor
-import com.samsung.smartclipboard.domain.ai.TopicAgent
 import com.samsung.smartclipboard.domain.model.DataItem
 import com.samsung.smartclipboard.domain.model.DataItemType
 import com.samsung.smartclipboard.domain.model.Topic
@@ -20,6 +19,7 @@ import com.samsung.smartclipboard.domain.model.TopicActionStatus
 import com.samsung.smartclipboard.domain.model.TopicActionType
 import com.samsung.smartclipboard.domain.model.TopicAnalysis
 import com.samsung.smartclipboard.domain.repository.DataRepository
+import com.samsung.smartclipboard.gemini.GeminiPurposeAnalyzer
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -28,9 +28,9 @@ import javax.inject.Inject
 class DataRepositoryImpl @Inject constructor(
     private val dataItemDao: DataItemDao,
     private val topicDao: TopicDao,
-    private val topicAgent: TopicAgent,
-    private val sourceExtractor: SourceExtractor,
-    private val purposeAnalyzer: PurposeAnalyzer
+    private val topicAgent: GeminiTopicAgent,
+    private val sourceExtractor: DefaultSourceExtractor,
+    private val purposeAnalyzer: GeminiPurposeAnalyzer
 ) : DataRepository {
 
     override fun observeItems(): Flow<List<DataItem>> {
@@ -213,7 +213,7 @@ class DataRepositoryImpl @Inject constructor(
 
         val now = System.currentTimeMillis()
 
-        val result = topicAgent.analyze(topic, items)
+        val result = topicAgent.analyze(topic, items,"")
 
         var success = false
 

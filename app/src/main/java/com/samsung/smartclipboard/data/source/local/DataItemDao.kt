@@ -24,6 +24,15 @@ interface DataItemDao {
     @Query("UPDATE data_items SET extractedContent = :extractedContent WHERE id = :id")
     suspend fun updateExtractedContent(id: Long, extractedContent: String)
 
+    @Query("UPDATE data_items SET purpose = :purpose, purposeKeyword = :purposeKeyword WHERE id = :id")
+    suspend fun updatePurpose(id: Long, purpose: String, purposeKeyword: String)
+
+    @Query("SELECT * FROM data_items WHERE purpose IS NULL ORDER BY createdAt DESC")
+    suspend fun getItemsWithoutPurpose(): List<DataItemEntity>
+
+    @Query("SELECT * FROM data_items WHERE id IN (:ids) ORDER BY createdAt DESC")
+    suspend fun getItemsByIds(ids: List<Long>): List<DataItemEntity>
+
     @Query("DELETE FROM data_items")
     suspend fun clearAll()
 }

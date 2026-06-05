@@ -21,7 +21,7 @@ import com.samsung.smartclipboard.data.model.TopicItemCrossRefEntity
         TopicActionEntity::class,
         KnowledgeEntity::class
     ],
-    version = 5,
+    version = 7,
     exportSchema = false
 )
 @TypeConverters(KeywordConverters::class)
@@ -159,6 +159,13 @@ abstract class SmartClipboardDatabase : RoomDatabase() {
                 db.execSQL(
                     "ALTER TABLE data_items ADD COLUMN extractedContent TEXT"
                 )
+            }
+        }
+
+        val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE data_items ADD COLUMN purpose TEXT")
+                db.execSQL("ALTER TABLE data_items ADD COLUMN purposeKeyword TEXT")
             }
         }
     }

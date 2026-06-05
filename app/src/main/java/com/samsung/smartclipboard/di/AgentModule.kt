@@ -6,12 +6,12 @@ import com.samsung.smartclipboard.data.agent.FallbackClusterTopicAgent
 import com.samsung.smartclipboard.data.agent.FallbackItemRecommendationAgent
 import com.samsung.smartclipboard.data.agent.FallbackPurposeAnalyzer
 import com.samsung.smartclipboard.data.agent.FallbackTopicPlanner
-import com.samsung.smartclipboard.data.gemini.GeminiActionPlanner
-import com.samsung.smartclipboard.data.gemini.GeminiClusterTopicAgent
-import com.samsung.smartclipboard.data.gemini.GeminiClusterer
-import com.samsung.smartclipboard.data.gemini.GeminiItemRecommendationAgent
-import com.samsung.smartclipboard.data.gemini.GeminiPurposeAnalyzer
-import com.samsung.smartclipboard.data.gemini.GeminiTopicPlanner
+import com.samsung.smartclipboard.gemini.GeminiActionPlanner
+import com.samsung.smartclipboard.gemini.GeminiClusterTopicAgent
+import com.samsung.smartclipboard.gemini.GeminiClusterer
+import com.samsung.smartclipboard.gemini.GeminiItemRecommendationAgent
+import com.samsung.smartclipboard.gemini.GeminiPurposeAnalyzer
+import com.samsung.smartclipboard.gemini.GeminiTopicPlanner
 import com.samsung.smartclipboard.data.retrieval.LocalCandidateItemRanker
 import com.samsung.smartclipboard.data.retrieval.LocalClusterer
 import com.samsung.smartclipboard.data.retrieval.LocalDataRetriever
@@ -31,6 +31,7 @@ import com.samsung.smartclipboard.domain.retrieval.DataRetriever
 import com.samsung.smartclipboard.domain.tool.ToolExecutor
 import com.samsung.smartclipboard.domain.tool.ToolRegistry
 import com.samsung.smartclipboard.domain.tool.ToolRouter
+import com.samsung.smartclipboard.gemini.GeminiRefineAgent
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -99,7 +100,7 @@ object AgentModule {
 
     @Provides @Singleton
     fun provideRefineAgent(geminiManager: GeminiManager): com.samsung.smartclipboard.domain.agent.RefineAgent {
-        return com.samsung.smartclipboard.data.gemini.GeminiRefineAgent(geminiManager)
+        return GeminiRefineAgent(geminiManager)
     }
 
     @Provides @Singleton

@@ -1,4 +1,4 @@
-package com.samsung.smartclipboard.data.ai
+package com.samsung.smartclipboard.gemini
 
 import com.samsung.smartclipboard.domain.ai.GeminiManager
 import kotlinx.coroutines.Dispatchers
@@ -14,7 +14,7 @@ import javax.inject.Named
 import javax.inject.Singleton
 
 @Singleton
-class DefaultGeminiManager @Inject constructor(
+class GeminiProcessor @Inject constructor(
     @Named("gemini_api_key") private val apiKey: String
 ) : GeminiManager {
 

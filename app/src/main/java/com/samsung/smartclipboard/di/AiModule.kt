@@ -1,11 +1,9 @@
 package com.samsung.smartclipboard.di
 
-import com.samsung.smartclipboard.data.ai.DefaultGeminiClient
-import com.samsung.smartclipboard.data.ai.DefaultGeminiManager
+import com.samsung.smartclipboard.gemini.GeminiProcessor
 import com.samsung.smartclipboard.data.ai.DefaultSourceExtractor
 import com.samsung.smartclipboard.data.ai.GeminiTopicAgent
 import com.samsung.smartclipboard.data.repository.KnowledgeRepositoryImpl
-import com.samsung.smartclipboard.domain.ai.GeminiClient
 import com.samsung.smartclipboard.domain.ai.GeminiManager
 import com.samsung.smartclipboard.domain.ai.SourceExtractor
 import com.samsung.smartclipboard.domain.ai.TopicAgent
@@ -26,14 +24,8 @@ abstract class AiModule {
     @Binds
     @Singleton
     abstract fun bindGeminiManager(
-        impl: DefaultGeminiManager
+        impl: GeminiProcessor
     ): GeminiManager
-
-    @Binds
-    @Singleton
-    abstract fun bindGeminiClient(
-        impl: DefaultGeminiClient
-    ): GeminiClient
 
     @Binds
     @Singleton

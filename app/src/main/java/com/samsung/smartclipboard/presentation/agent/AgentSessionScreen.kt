@@ -47,29 +47,19 @@ fun AgentSessionScreen(
                             .fillMaxSize()
                             .verticalScroll(rememberScrollState())
                     ) {
-                        TopicInputScreen(
-                            topicQuery = uiState.topicQuery,
-                            isLoading = uiState.isLoading,
-                            errorMessage = uiState.errorMessage,
-                            onTopicQueryChange = { onIntent(AgentSessionIntent.TopicQueryChanged(it)) },
-                            onStart = { onIntent(AgentSessionIntent.Start) }
-                        )
                         ClusterSuggestionScreen(
-                            onTopicSelected = { suggestedTitle ->
-                                onIntent(AgentSessionIntent.StartWithSuggestedTopic(suggestedTitle))
+                            onTopicSelected = { suggestedTitle, clusterItemIds ->
+                                if (clusterItemIds.isNotEmpty()) {
+                                    onIntent(AgentSessionIntent.StartWithClusterItems(suggestedTitle, clusterItemIds))
+                                } else {
+                                    onIntent(AgentSessionIntent.StartWithSuggestedTopic(suggestedTitle))
+                                }
                             },
                             modifier = Modifier.heightIn(max = 400.dp),
                             compactMode = true
                         )
                     }
                 }
-                //검색 기록 수립
-                is AgentSessionState.PlanningRetrieval -> TopicInputScreen(
-                    topicQuery = uiState.topicQuery, isLoading = uiState.isLoading,
-                    errorMessage = uiState.errorMessage,
-                    onTopicQueryChange = { onIntent(AgentSessionIntent.TopicQueryChanged(it)) },
-                    onStart = { onIntent(AgentSessionIntent.Start) }
-                )
                 is AgentSessionState.RetrievingItems -> RetrievingContent(query = state.query, progress = state.progress)
                 is AgentSessionState.AwaitingItemSelection -> CandidateItemSelectionScreen(
                     candidateItems = state.candidateItems, selectedItemIds = state.selectedItemIds,

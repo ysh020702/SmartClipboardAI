@@ -42,6 +42,7 @@ sealed interface AgentSessionIntent {
     data object FinishObservation : AgentSessionIntent
     data object RunAnotherAction : AgentSessionIntent
     data class StartWithSuggestedTopic(val topicQuery: String) : AgentSessionIntent
+    data class StartWithClusterItems(val topicQuery: String, val clusterItemIds: List<Long>) : AgentSessionIntent
     data class RefineFeedbackChanged(val feedback: String) : AgentSessionIntent
     data object StartRefinement : AgentSessionIntent
     data class QuickRefine(val action: QuickRefineAction) : AgentSessionIntent

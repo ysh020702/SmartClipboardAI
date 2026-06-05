@@ -35,7 +35,7 @@ import java.util.Locale
 @Composable
 fun ClusterSuggestionScreen(
     viewModel: ClusterSuggestionViewModel = hiltViewModel(),
-    onTopicSelected: (String) -> Unit = {},
+    onTopicSelected: (String, List<Long>) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier,
     compactMode: Boolean = false
 ) {
@@ -53,7 +53,7 @@ fun ClusterSuggestionScreen(
 fun ClusterSuggestionScreen(
     uiState: ClusterSuggestionUiState,
     onIntent: (ClusterSuggestionIntent) -> Unit,
-    onTopicSelected: (String) -> Unit,
+    onTopicSelected: (String, List<Long>) -> Unit,
     modifier: Modifier = Modifier,
     compactMode: Boolean = false
 ) {
@@ -70,7 +70,7 @@ fun ClusterSuggestionScreen(
 private fun CompactModeContent(
     uiState: ClusterSuggestionUiState,
     onIntent: (ClusterSuggestionIntent) -> Unit,
-    onTopicSelected: (String) -> Unit,
+    onTopicSelected: (String, List<Long>) -> Unit,
     modifier: Modifier,
     dateFormat: SimpleDateFormat
 ) {
@@ -109,7 +109,8 @@ private fun CompactModeContent(
         } else {
             Spacer(modifier = Modifier.height(8.dp))
             uiState.suggestedTopics.take(5).forEach { topic ->
-                SuggestedTopicCard(topic = topic, clusterLabel = uiState.clusters.firstOrNull { it.clusterId == topic.relatedClusterId }?.clusterLabel, onClick = { onTopicSelected(topic.suggestedTitle) })
+                val clusterItemIds = uiState.clusters.firstOrNull { it.clusterId == topic.relatedClusterId }?.itemIds ?: emptyList()
+                SuggestedTopicCard(topic = topic, clusterLabel = uiState.clusters.firstOrNull { it.clusterId == topic.relatedClusterId }?.clusterLabel, onClick = { onTopicSelected(topic.suggestedTitle, clusterItemIds) })
                 Spacer(modifier = Modifier.height(4.dp))
             }
         }
@@ -120,7 +121,7 @@ private fun CompactModeContent(
 private fun FullModeContent(
     uiState: ClusterSuggestionUiState,
     onIntent: (ClusterSuggestionIntent) -> Unit,
-    onTopicSelected: (String) -> Unit,
+    onTopicSelected: (String, List<Long>) -> Unit,
     modifier: Modifier,
     dateFormat: SimpleDateFormat
 ) {
@@ -166,7 +167,8 @@ private fun FullModeContent(
                         Spacer(modifier = Modifier.height(4.dp))
                     }
                     items(uiState.suggestedTopics) { topic ->
-                        SuggestedTopicCard(topic = topic, clusterLabel = uiState.clusters.firstOrNull { it.clusterId == topic.relatedClusterId }?.clusterLabel, onClick = { onTopicSelected(topic.suggestedTitle) })
+                        val clusterItemIds = uiState.clusters.firstOrNull { it.clusterId == topic.relatedClusterId }?.itemIds ?: emptyList()
+                        SuggestedTopicCard(topic = topic, clusterLabel = uiState.clusters.firstOrNull { it.clusterId == topic.relatedClusterId }?.clusterLabel, onClick = { onTopicSelected(topic.suggestedTitle, clusterItemIds) })
                         Spacer(modifier = Modifier.height(4.dp))
                     }
                     if (uiState.clusters.isNotEmpty()) {

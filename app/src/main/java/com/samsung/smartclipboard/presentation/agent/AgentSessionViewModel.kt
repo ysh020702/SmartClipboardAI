@@ -8,8 +8,10 @@ import com.samsung.smartclipboard.domain.agent.RefineAgent
 import com.samsung.smartclipboard.domain.agent.TopicPlanner
 import com.samsung.smartclipboard.domain.model.AgentSession
 import com.samsung.smartclipboard.domain.model.AgentSessionState
+import com.samsung.smartclipboard.domain.model.CandidateItem
 import com.samsung.smartclipboard.domain.model.RetrievalPlan
 import com.samsung.smartclipboard.domain.model.ToolExecutionResult
+import com.samsung.smartclipboard.domain.repository.DataRepository
 import com.samsung.smartclipboard.domain.retrieval.CandidateItemRanker
 import com.samsung.smartclipboard.domain.retrieval.DataRetriever
 import com.samsung.smartclipboard.domain.tool.ToolExecutor
@@ -32,7 +34,8 @@ class AgentSessionViewModel @Inject constructor(
     private val actionPlanner: ActionPlanner,
     private val toolRouter: ToolRouter,
     private val toolExecutor: ToolExecutor,
-    private val refineAgent: RefineAgent
+    private val refineAgent: RefineAgent,
+    private val dataRepository: DataRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AgentSessionUiState())
@@ -43,6 +46,7 @@ class AgentSessionViewModel @Inject constructor(
             is AgentSessionIntent.TopicQueryChanged -> onTopicQueryChanged(intent.query)
             is AgentSessionIntent.Start -> startSession()
             is AgentSessionIntent.StartWithSuggestedTopic -> startSessionWithSuggestedTopic(intent.topicQuery)
+            is AgentSessionIntent.StartWithClusterItems -> startSessionWithClusterItems(intent.topicQuery, intent.clusterItemIds)
             is AgentSessionIntent.ToggleItemSelection -> toggleItemSelection(intent.itemId)
             is AgentSessionIntent.SelectAllRecommended -> selectAllRecommended()
             is AgentSessionIntent.ClearSelection -> clearSelection()
@@ -81,6 +85,47 @@ class AgentSessionViewModel @Inject constructor(
         if (normalized.isBlank()) { _uiState.update { it.copy(agentState = AgentSessionState.Failed("input", "추천 주제가 비어 있습니다.", true), errorMessage = "추천 주제가 비어 있습니다.", isLoading = false) }; return }
         _uiState.update { it.copy(topicQuery = normalized) }
         startSession(topicOverride = normalized)
+    }
+
+    /**
+     * 클러스터에서 선택된 주제로 에이전트를 시작.
+     * 데이터 재검색 없이 클러스터 아이템을 그대로 후보 아이템으로 사용한다.
+     */
+    private fun startSessionWithClusterItems(topicQuery: String, clusterItemIds: List<Long>) {
+        val current = _uiState.value
+        if (current.isLoading) return
+        val normalized = topicQuery.trim()
+        if (normalized.isBlank()) { _uiState.update { it.copy(agentState = AgentSessionState.Failed("input", "추천 주제가 비어 있습니다.", true), errorMessage = "추천 주제가 비어 있습니다.", isLoading = false) }; return }
+        _uiState.update { it.copy(topicQuery = normalized) }
+
+        val session = AgentSession(sessionId = UUID.randomUUID().toString(), topicTitle = normalized, state = AgentSessionState.PlanningRetrieval)
+        _uiState.update { it.copy(session = session, agentState = AgentSessionState.PlanningRetrieval, isLoading = true, errorMessage = null) }
+
+        viewModelScope.launch {
+            try {
+                val items = dataRepository.getItemsByIds(clusterItemIds)
+                if (items.isEmpty()) { setFailed("retrieval", "클러스터 아이템을 찾을 수 없습니다."); return@launch }
+
+                val candidateItems = items.map { item ->
+                    CandidateItem(
+                        item = item,
+                        relevanceScore = 1.0f,
+                        relevanceReason = "클러스터에서 선택된 항목"
+                    )
+                }
+                val selectedItemIds = candidateItems.map { it.item.id }.toSet()
+                val plan = RetrievalPlan(keywords = listOf(normalized), maxResults = items.size)
+
+                val awaitState = AgentSessionState.AwaitingItemSelection(
+                    candidateItems = candidateItems,
+                    recommendationReason = "클러스터에서 ${items.size}개 항목이 선택되었습니다.",
+                    suggestedQueries = emptyList(),
+                    selectedItemIds = selectedItemIds
+                )
+                val updatedSession = session.copy(state = awaitState, candidateItems = candidateItems, updatedAt = System.currentTimeMillis())
+                _uiState.update { it.copy(session = updatedSession, agentState = awaitState, retrievalPlan = plan, isLoading = false, errorMessage = null) }
+            } catch (e: Exception) { setFailed("cluster_loading", e) }
+        }
     }
 
     private fun startSession(topicOverride: String?) {

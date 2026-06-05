@@ -28,4 +28,10 @@ interface DataRepository {
     suspend fun addItemsToTopic(title: String, itemIds: List<Long>, addedBy: String = "USER"): Long
     suspend fun runTopicAnalysis(topicId: Long): Boolean
     suspend fun updateTopicActionDraft(actionId: Long, title: String, body: String)
+
+    /** purpose가 없는 DataItem들에 대해 Gemini 기반 purpose 분석을 수행하고 DB를 업데이트한다 */
+    suspend fun fillPurposes()
+
+    /** 지정된 ID 목록에 해당하는 DataItem들을 반환한다 */
+    suspend fun getItemsByIds(ids: List<Long>): List<DataItem>
 }

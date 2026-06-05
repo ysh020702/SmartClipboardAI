@@ -17,7 +17,9 @@ object TestModelFactory {
         title: String? = "테스트 제목",
         source: String? = "test",
         mimeType: String? = "text/plain",
-        createdAt: Long = 1_700_000_000_000L
+        createdAt: Long = 1_700_000_000_000L,
+        purpose: String? = null,
+        purposeKeyword: String? = null
     ): DataItem = DataItem(
         id = id,
         type = type,
@@ -25,7 +27,9 @@ object TestModelFactory {
         title = title,
         source = source,
         mimeType = mimeType,
-        createdAt = createdAt
+        createdAt = createdAt,
+        purpose = purpose,
+        purposeKeyword = purposeKeyword
     )
 
     fun candidateItem(

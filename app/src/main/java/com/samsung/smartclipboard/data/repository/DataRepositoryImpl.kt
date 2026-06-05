@@ -9,6 +9,7 @@ import com.samsung.smartclipboard.data.model.TopicItemCrossRefEntity
 import com.samsung.smartclipboard.data.source.local.DataItemDao
 import com.samsung.smartclipboard.data.source.local.TopicDao
 import com.samsung.smartclipboard.data.source.local.TopicSummaryRow
+import com.samsung.smartclipboard.domain.ai.PurposeAnalyzer
 import com.samsung.smartclipboard.domain.ai.SourceExtractor
 import com.samsung.smartclipboard.domain.ai.TopicAgent
 import com.samsung.smartclipboard.domain.model.DataItem
@@ -28,7 +29,8 @@ class DataRepositoryImpl @Inject constructor(
     private val dataItemDao: DataItemDao,
     private val topicDao: TopicDao,
     private val topicAgent: TopicAgent,
-    private val sourceExtractor: SourceExtractor
+    private val sourceExtractor: SourceExtractor,
+    private val purposeAnalyzer: PurposeAnalyzer
 ) : DataRepository {
 
     override fun observeItems(): Flow<List<DataItem>> {
@@ -68,7 +70,8 @@ class DataRepositoryImpl @Inject constructor(
             source = source,
             createdAt = System.currentTimeMillis()
         )
-        dataItemDao.insert(entity)
+        val id = dataItemDao.insert(entity)
+        analyzePurposeForItem(id)
     }
 
     override suspend fun addLink(url: String, title: String?, source: String?) {
@@ -89,6 +92,8 @@ class DataRepositoryImpl @Inject constructor(
         } catch (e: Exception) {
             Log.w("DataRepository", "URL 내용 추출 실패: $url", e)
         }
+
+        analyzePurposeForItem(id)
     }
 
     override suspend fun addMedia(uri: String, mimeType: String?, source: String?) {
@@ -116,6 +121,8 @@ class DataRepositoryImpl @Inject constructor(
                 Log.w("DataRepository", "OCR 추출 실패 (media): $uri", e)
             }
         }
+
+        analyzePurposeForItem(id)
     }
 
     override suspend fun addScreenshot(
@@ -143,6 +150,8 @@ class DataRepositoryImpl @Inject constructor(
         } catch (e: Exception) {
             Log.w("DataRepository", "OCR 추출 실패 (screenshot): $uri", e)
         }
+
+        analyzePurposeForItem(id)
     }
 
     override suspend fun updateScreenshotTimestamp(uri: String, createdAt: Long) {
@@ -256,6 +265,56 @@ class DataRepositoryImpl @Inject constructor(
         )
     }
 
+    override suspend fun fillPurposes() {
+        val entities = dataItemDao.getItemsWithoutPurpose()
+        if (entities.isEmpty()) return
+
+        val items = entities.map { it.toDomain() }
+        val result = purposeAnalyzer.analyze(items)
+
+        result.onSuccess { analyzedList ->
+            for (analyzed in analyzedList) {
+                try {
+                    dataItemDao.updatePurpose(analyzed.itemId, analyzed.purpose, analyzed.purposeKeyword)
+                } catch (e: Exception) {
+                    Log.w("DataRepository", "Purpose 업데이트 실패: itemId=${analyzed.itemId}", e)
+                }
+            }
+        }
+
+        result.onFailure { exception ->
+            Log.e("DataRepository", "Purpose 분석 전체 실패", exception)
+        }
+    }
+
+    override suspend fun getItemsByIds(ids: List<Long>): List<DataItem> {
+        if (ids.isEmpty()) return emptyList()
+        return dataItemDao.getItemsByIds(ids).map { it.toDomain() }
+    }
+
+    /**
+     * 단일 아이템에 대해 purpose 분석을 수행하고 DB를 업데이트한다.
+     * 실패해도 아이템 저장 자체에는 영향이 없도록 예외를 삼킨다.
+     */
+    private suspend fun analyzePurposeForItem(id: Long) {
+        try {
+            val entity = dataItemDao.getItemsWithoutPurpose().find { it.id == id } ?: return
+            val item = entity.toDomain()
+            val result = purposeAnalyzer.analyze(listOf(item))
+            result.onSuccess { analyzedList ->
+                val analyzed = analyzedList.firstOrNull() ?: return@onSuccess
+                dataItemDao.updatePurpose(analyzed.itemId, analyzed.purpose, analyzed.purposeKeyword)
+                Log.d("aaa",analyzed.purpose)
+                Log.d("aaa",analyzed.purposeKeyword)
+            }
+            result.onFailure { e ->
+                Log.w("DataRepository", "단일 항목 purpose 분석 실패: id=$id", e)
+            }
+        } catch (e: Exception) {
+            Log.w("DataRepository", "Purpose 분석 중 예외: id=$id", e)
+        }
+    }
+
     private fun DataItemEntity.toDomain(): DataItem {
         val resolvedType = try {
             DataItemType.valueOf(type)
@@ -270,7 +329,9 @@ class DataRepositoryImpl @Inject constructor(
             source = source,
             mimeType = mimeType,
             createdAt = createdAt,
-            extractedContent = extractedContent
+            extractedContent = extractedContent,
+            purpose = purpose,
+            purposeKeyword = purposeKeyword
         )
     }
 

@@ -2,9 +2,9 @@ package com.samsung.smartclipboard.presentation.agent
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.samsung.smartclipboard.domain.agent.ClusterTopicAgent
 import com.samsung.smartclipboard.domain.repository.DataRepository
 import com.samsung.smartclipboard.domain.retrieval.DataClusterer
+import com.samsung.smartclipboard.gemini.GeminiClusterTopicAgent
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,7 +18,7 @@ import javax.inject.Inject
 class ClusterSuggestionViewModel @Inject constructor(
     private val dataRepository: DataRepository,
     private val dataClusterer: DataClusterer,
-    private val clusterTopicAgent: ClusterTopicAgent
+    private val clusterTopicAgent: GeminiClusterTopicAgent
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ClusterSuggestionUiState())

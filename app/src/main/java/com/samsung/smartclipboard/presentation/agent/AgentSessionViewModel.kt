@@ -2,10 +2,6 @@ package com.samsung.smartclipboard.presentation.agent
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.samsung.smartclipboard.domain.agent.ActionPlanner
-import com.samsung.smartclipboard.domain.agent.ItemRecommendationAgent
-import com.samsung.smartclipboard.domain.agent.RefineAgent
-import com.samsung.smartclipboard.domain.agent.TopicPlanner
 import com.samsung.smartclipboard.domain.model.AgentSession
 import com.samsung.smartclipboard.domain.model.AgentSessionState
 import com.samsung.smartclipboard.domain.model.CandidateItem
@@ -16,6 +12,10 @@ import com.samsung.smartclipboard.domain.retrieval.CandidateItemRanker
 import com.samsung.smartclipboard.domain.retrieval.DataRetriever
 import com.samsung.smartclipboard.domain.tool.ToolExecutor
 import com.samsung.smartclipboard.domain.tool.ToolRouter
+import com.samsung.smartclipboard.gemini.GeminiActionPlanner
+import com.samsung.smartclipboard.gemini.GeminiItemRecommendationAgent
+import com.samsung.smartclipboard.gemini.GeminiRefineAgent
+import com.samsung.smartclipboard.gemini.GeminiTopicPlanner
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -27,14 +27,14 @@ import javax.inject.Inject
 
 @HiltViewModel
 class AgentSessionViewModel @Inject constructor(
-    private val topicPlanner: TopicPlanner,
+    private val topicPlanner: GeminiTopicPlanner,
     private val dataRetriever: DataRetriever,
     private val candidateItemRanker: CandidateItemRanker,
-    private val itemRecommendationAgent: ItemRecommendationAgent,
-    private val actionPlanner: ActionPlanner,
+    private val itemRecommendationAgent: GeminiItemRecommendationAgent,
+    private val actionPlanner: GeminiActionPlanner,
     private val toolRouter: ToolRouter,
     private val toolExecutor: ToolExecutor,
-    private val refineAgent: RefineAgent,
+    private val refineAgent: GeminiRefineAgent,
     private val dataRepository: DataRepository
 ) : ViewModel() {
 

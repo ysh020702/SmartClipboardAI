@@ -1,10 +1,5 @@
 package com.samsung.smartclipboard.gemini
 
-import android.util.Log
-import com.samsung.smartclipboard.data.agent.FallbackPurposeAnalyzer
-import com.samsung.smartclipboard.domain.ai.AnalyzedPurpose
-import com.samsung.smartclipboard.domain.ai.GeminiManager
-import com.samsung.smartclipboard.domain.ai.PurposeAnalyzer
 import com.samsung.smartclipboard.domain.model.DataItem
 import com.samsung.smartclipboard.gemini.GeminiUtils.contentPreview
 import com.samsung.smartclipboard.gemini.GeminiUtils.escapeJson
@@ -16,9 +11,8 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
 class GeminiPurposeAnalyzer(
-    private val geminiManager: GeminiManager,
-    private val fallbackAnalyzer: PurposeAnalyzer = FallbackPurposeAnalyzer()
-) : PurposeAnalyzer {
+    private val geminiManager: GeminiManager
+) {
 
     companion object {
         private const val TAG = "GeminiPurposeAnalyzer"
@@ -27,7 +21,7 @@ class GeminiPurposeAnalyzer(
 
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
-    override suspend fun analyze(items: List<DataItem>): Result<List<AnalyzedPurpose>> {
+    suspend fun analyze(items: List<DataItem>): Result<List<AnalyzedPurpose>> {
         if (items.isEmpty()) return Result.success(emptyList())
 
         // chunked로 나눈 배치를 flatMap으로 순회하며 성공한 결과만 하나의 리스트로 병합합니다.
@@ -56,12 +50,6 @@ class GeminiPurposeAnalyzer(
             }
             parsedResult
 
-        }.recoverCatching { e ->
-            // 3. 위 블록에서 에러 발생 시 Local 폴백으로 부드럽게 전환
-            Log.w(TAG, "Gemini 분석/검증 실패 (${e.message}), 폴백 사용")
-            fallbackAnalyzer.analyze(batch)
-                .onFailure { Log.e(TAG, "폴백 purpose 분석도 실패: ${it.message}") }
-                .getOrThrow()
         }
     }
 
@@ -151,4 +139,10 @@ class GeminiPurposeAnalyzer(
             .take(7)
             .joinToString(",")
     }
+
+    data class AnalyzedPurpose(
+        val itemId: Long,
+        val purpose: String,
+        val purposeKeyword: String
+    )
 }

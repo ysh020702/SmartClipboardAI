@@ -9,7 +9,6 @@ import com.google.android.gms.tasks.Tasks
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.korean.KoreanTextRecognizerOptions
-import com.samsung.smartclipboard.domain.ai.SourceExtractor
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -23,13 +22,13 @@ import javax.inject.Singleton
 @Singleton
 class DefaultSourceExtractor @Inject constructor(
     @ApplicationContext private val context: Context
-) : SourceExtractor {
+) {
 
     private val ocrRecognizer = TextRecognition.getClient(
         KoreanTextRecognizerOptions.Builder().build()
     )
 
-    override suspend fun extractFromOcr(uriString: String): String = withContext(Dispatchers.IO) {
+    suspend fun extractFromOcr(uriString: String): String = withContext(Dispatchers.IO) {
         return@withContext try {
             val uri = Uri.parse(uriString)
             val image = loadAndCropBitmap(uri)
@@ -59,7 +58,7 @@ class DefaultSourceExtractor @Inject constructor(
         return InputImage.fromBitmap(croppedBitmap, 0)
     }
 
-    override suspend fun extractFromUrl(url: String): String {
+    suspend fun extractFromUrl(url: String): String {
         val correctionUrl = url.replace("://blog.naver.com","://m.blog.naver.com")
         val client = OkHttpClient()
 

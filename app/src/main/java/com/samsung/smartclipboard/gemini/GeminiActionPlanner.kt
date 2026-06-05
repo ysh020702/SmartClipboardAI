@@ -1,8 +1,5 @@
 package com.samsung.smartclipboard.gemini
 
-import com.samsung.smartclipboard.data.agent.FallbackActionPlanner
-import com.samsung.smartclipboard.domain.agent.ActionPlanner
-import com.samsung.smartclipboard.domain.ai.GeminiManager
 import com.samsung.smartclipboard.domain.model.AgentActionDraft
 import com.samsung.smartclipboard.domain.model.CandidateItem
 import com.samsung.smartclipboard.domain.model.RetrievalPlan
@@ -13,13 +10,12 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
 class GeminiActionPlanner(
-    private val geminiManager: GeminiManager,
-    private val fallbackPlanner: ActionPlanner = FallbackActionPlanner()
-) : ActionPlanner {
+    private val geminiManager: GeminiManager
+) {
 
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
-    override suspend fun planActions(
+    suspend fun planActions(
         topicQuery: String,
         plan: RetrievalPlan,
         selectedItems: List<CandidateItem>
@@ -47,9 +43,6 @@ class GeminiActionPlanner(
             }) { "Action 필드 검증 실패" }
 
             actions
-        }.recoverCatching {
-            // 3. 에러 발생 시 Fallback으로 전환
-            fallbackPlanner.planActions(topicQuery, plan, selectedItems).getOrThrow()
         }
     }
 

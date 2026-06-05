@@ -1,8 +1,5 @@
 package com.samsung.smartclipboard.gemini
 
-import com.samsung.smartclipboard.data.agent.FallbackClusterTopicAgent
-import com.samsung.smartclipboard.domain.agent.ClusterTopicAgent
-import com.samsung.smartclipboard.domain.ai.GeminiManager
 import com.samsung.smartclipboard.domain.model.DataCluster
 import com.samsung.smartclipboard.domain.model.DataItem
 import com.samsung.smartclipboard.domain.model.SuggestedTopic
@@ -17,18 +14,17 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
 class GeminiClusterTopicAgent(
-    private val geminiManager: GeminiManager,
-    private val fallbackAgent: ClusterTopicAgent = FallbackClusterTopicAgent()
-) : ClusterTopicAgent {
+    private val geminiManager: GeminiManager
+) {
 
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
-    override suspend fun suggestTopics(
+    suspend fun suggestTopics(
         clusters: List<DataCluster>,
         items: List<DataItem>
     ): Result<List<DataCluster>> {
         if (clusters.isEmpty()) return Result.success(emptyList())
-        if (items.isEmpty()) return fallbackAgent.suggestTopics(clusters, items)
+        if (items.isEmpty()) return Result.failure(IllegalArgumentException("아이템이 비어 있습니다"))
 
         return try {
             val targetClusters = clusters.take(10)
@@ -38,10 +34,10 @@ class GeminiClusterTopicAgent(
             if (validateClusters(parsedResult, targetClusters)) {
                 Result.success(parsedResult)
             } else {
-                fallbackAgent.suggestTopics(clusters, items)
+                Result.failure(IllegalArgumentException("올바른 클러스터가 아닙니다"))
             }
         } catch (e: Exception) {
-            fallbackAgent.suggestTopics(clusters, items)
+            Result.failure(IllegalArgumentException("해당 클러스터의 주제를 찾는데 실패했습니다"))
         }
     }
 

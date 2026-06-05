@@ -1,11 +1,10 @@
 package com.samsung.smartclipboard.data.ai
 
 import android.util.Log
-import com.samsung.smartclipboard.domain.ai.GeminiManager
-import com.samsung.smartclipboard.domain.ai.TopicAgent
 import com.samsung.smartclipboard.domain.model.AgentResult
 import com.samsung.smartclipboard.domain.model.DataItem
 import com.samsung.smartclipboard.domain.model.Topic
+import com.samsung.smartclipboard.gemini.GeminiManager
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -13,9 +12,9 @@ import javax.inject.Singleton
 class GeminiTopicAgent @Inject constructor(
     private val geminiManager: GeminiManager,
     private val parser: AgentJsonParser
-) : TopicAgent {
+) {
 
-    override suspend fun analyze(
+    suspend fun analyze(
         topic: Topic,
         items: List<DataItem>,
         userInstruction: String?

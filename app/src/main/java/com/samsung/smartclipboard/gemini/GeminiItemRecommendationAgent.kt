@@ -1,8 +1,5 @@
 package com.samsung.smartclipboard.gemini
 
-import com.samsung.smartclipboard.data.agent.FallbackItemRecommendationAgent
-import com.samsung.smartclipboard.domain.agent.ItemRecommendationAgent
-import com.samsung.smartclipboard.domain.ai.GeminiManager
 import com.samsung.smartclipboard.domain.model.CandidateItem
 import com.samsung.smartclipboard.domain.model.ItemRecommendationResult
 import com.samsung.smartclipboard.domain.model.RetrievalPlan
@@ -13,19 +10,18 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
 class GeminiItemRecommendationAgent(
-    private val geminiManager: GeminiManager,
-    private val fallbackAgent: ItemRecommendationAgent = FallbackItemRecommendationAgent()
-) : ItemRecommendationAgent {
+    private val geminiManager: GeminiManager
+) {
 
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
-    override suspend fun recommend(
+    suspend fun recommend(
         topicQuery: String,
         plan: RetrievalPlan,
         candidates: List<CandidateItem>
     ): Result<ItemRecommendationResult> {
         if (topicQuery.isBlank()) return Result.failure(IllegalArgumentException("주제가 비어 있습니다"))
-        if (candidates.isEmpty()) return fallbackAgent.recommend(topicQuery, plan, candidates)
+        if (candidates.isEmpty()) return Result.failure(IllegalArgumentException("아이템이 비어 있습니다"))
 
         val targetCandidates = candidates.take(20)
 
@@ -44,9 +40,6 @@ class GeminiItemRecommendationAgent(
             require(result.recommendationReason.isNotBlank()) { "추천 이유 누락" }
 
             result
-        }.recoverCatching {
-            // 3. 에러 발생 시 Fallback으로 부드럽게 전환
-            fallbackAgent.recommend(topicQuery, plan, candidates).getOrThrow()
         }
     }
 

@@ -1,6 +1,5 @@
 package com.samsung.smartclipboard.gemini
 
-import com.samsung.smartclipboard.domain.ai.GeminiManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
@@ -14,9 +13,9 @@ import javax.inject.Named
 import javax.inject.Singleton
 
 @Singleton
-class GeminiProcessor @Inject constructor(
+class GeminiManager @Inject constructor(
     @Named("gemini_api_key") private val apiKey: String
-) : GeminiManager {
+) {
 
     companion object {
         private const val MODEL = "gemini-3.1-flash-lite"
@@ -24,7 +23,7 @@ class GeminiProcessor @Inject constructor(
 
     private val client = OkHttpClient()
 
-    override suspend fun run(prompt: String): String = withContext(Dispatchers.IO) {
+    suspend fun run(prompt: String): String = withContext(Dispatchers.IO) {
         try {
             val body = JSONObject().apply {
                 put("contents", JSONArray().put(JSONObject().apply {

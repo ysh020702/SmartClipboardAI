@@ -1,8 +1,6 @@
 package com.samsung.smartclipboard.gemini
 
-import com.samsung.smartclipboard.data.agent.FallbackRefineAgent
-import com.samsung.smartclipboard.domain.agent.RefineAgent
-import com.samsung.smartclipboard.domain.ai.GeminiManager
+
 import com.samsung.smartclipboard.domain.model.AgentActionDraft
 import com.samsung.smartclipboard.domain.model.CandidateItem
 import com.samsung.smartclipboard.domain.model.RetrievalPlan
@@ -17,13 +15,12 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
 class GeminiRefineAgent(
-    private val geminiManager: GeminiManager,
-    private val fallbackAgent: RefineAgent = FallbackRefineAgent()
-) : RefineAgent {
+    private val geminiManager: GeminiManager
+) {
 
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
-    override suspend fun refineActions(
+    suspend fun refineActions(
         topicQuery: String,
         plan: RetrievalPlan,
         selectedItems: List<CandidateItem>,
@@ -53,9 +50,6 @@ class GeminiRefineAgent(
             }) { "Action 검증 실패" }
 
             actions
-        }.recoverCatching {
-            // 3. 에러 발생 시 Fallback으로 부드럽게 전환
-            fallbackAgent.refineActions(topicQuery, plan, selectedItems, currentActions, feedback).getOrThrow()
         }
     }
 

@@ -2,7 +2,6 @@ package com.samsung.smartclipboard.gemini
 
 import android.util.Log
 import com.samsung.smartclipboard.data.retrieval.LocalClusterer
-import com.samsung.smartclipboard.domain.ai.GeminiManager
 import com.samsung.smartclipboard.domain.model.DataCluster
 import com.samsung.smartclipboard.domain.model.DataItem
 import com.samsung.smartclipboard.domain.retrieval.DataClusterer

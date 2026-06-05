@@ -1,8 +1,5 @@
 package com.samsung.smartclipboard.gemini
 
-import com.samsung.smartclipboard.data.agent.FallbackTopicPlanner
-import com.samsung.smartclipboard.domain.agent.TopicPlanner
-import com.samsung.smartclipboard.domain.ai.GeminiManager
 import com.samsung.smartclipboard.domain.model.DataItemType
 import com.samsung.smartclipboard.domain.model.RetrievalPlan
 import com.samsung.smartclipboard.gemini.GeminiUtils.extractJsonObject
@@ -12,13 +9,12 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
 class GeminiTopicPlanner(
-    private val geminiManager: GeminiManager,
-    private val fallbackTopicPlanner: TopicPlanner = FallbackTopicPlanner()
-) : TopicPlanner {
+    private val geminiManager: GeminiManager
+) {
 
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
-    override suspend fun plan(topicQuery: String): Result<RetrievalPlan> {
+    suspend fun plan(topicQuery: String): Result<RetrievalPlan> {
         val trimmed = topicQuery.trim()
         if (trimmed.isBlank()) return Result.failure(IllegalArgumentException("주제가 비어 있습니다"))
 
@@ -33,9 +29,6 @@ class GeminiTopicPlanner(
             require(plan.dateRangeDays == null || plan.dateRangeDays in 1..365) { "dateRangeDays 범위 오류" }
 
             plan
-        }.recoverCatching {
-            // 3. 에러 발생 시 Fallback으로 전환
-            fallbackTopicPlanner.plan(trimmed).getOrThrow()
         }
     }
 

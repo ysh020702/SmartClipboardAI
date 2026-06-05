@@ -1,11 +1,6 @@
 package com.samsung.smartclipboard.di
 
 import android.content.Context
-import com.samsung.smartclipboard.data.agent.FallbackActionPlanner
-import com.samsung.smartclipboard.data.agent.FallbackClusterTopicAgent
-import com.samsung.smartclipboard.data.agent.FallbackItemRecommendationAgent
-import com.samsung.smartclipboard.data.agent.FallbackPurposeAnalyzer
-import com.samsung.smartclipboard.data.agent.FallbackTopicPlanner
 import com.samsung.smartclipboard.gemini.GeminiActionPlanner
 import com.samsung.smartclipboard.gemini.GeminiClusterTopicAgent
 import com.samsung.smartclipboard.gemini.GeminiClusterer
@@ -18,12 +13,6 @@ import com.samsung.smartclipboard.data.retrieval.LocalDataRetriever
 import com.samsung.smartclipboard.data.tool.ToolExecutorImpl
 import com.samsung.smartclipboard.data.tool.ToolRegistryImpl
 import com.samsung.smartclipboard.data.tool.ToolRouterImpl
-import com.samsung.smartclipboard.domain.agent.ActionPlanner
-import com.samsung.smartclipboard.domain.agent.ClusterTopicAgent
-import com.samsung.smartclipboard.domain.agent.ItemRecommendationAgent
-import com.samsung.smartclipboard.domain.agent.TopicPlanner
-import com.samsung.smartclipboard.domain.ai.GeminiManager
-import com.samsung.smartclipboard.domain.ai.PurposeAnalyzer
 import com.samsung.smartclipboard.domain.repository.DataRepository
 import com.samsung.smartclipboard.domain.retrieval.CandidateItemRanker
 import com.samsung.smartclipboard.domain.retrieval.DataClusterer
@@ -31,6 +20,7 @@ import com.samsung.smartclipboard.domain.retrieval.DataRetriever
 import com.samsung.smartclipboard.domain.tool.ToolExecutor
 import com.samsung.smartclipboard.domain.tool.ToolRegistry
 import com.samsung.smartclipboard.domain.tool.ToolRouter
+import com.samsung.smartclipboard.gemini.GeminiManager
 import com.samsung.smartclipboard.gemini.GeminiRefineAgent
 import dagger.Module
 import dagger.Provides
@@ -44,8 +34,8 @@ import javax.inject.Singleton
 object AgentModule {
 
     @Provides @Singleton
-    fun provideTopicPlanner(geminiManager: GeminiManager): TopicPlanner {
-        return GeminiTopicPlanner(geminiManager, FallbackTopicPlanner())
+    fun provideTopicPlanner(geminiManager: GeminiManager): GeminiTopicPlanner {
+        return GeminiTopicPlanner(geminiManager)
     }
 
     @Provides @Singleton
@@ -59,13 +49,13 @@ object AgentModule {
     }
 
     @Provides @Singleton
-    fun provideItemRecommendationAgent(geminiManager: GeminiManager): ItemRecommendationAgent {
-        return GeminiItemRecommendationAgent(geminiManager, FallbackItemRecommendationAgent())
+    fun provideItemRecommendationAgent(geminiManager: GeminiManager): GeminiItemRecommendationAgent {
+        return GeminiItemRecommendationAgent(geminiManager)
     }
 
     @Provides @Singleton
-    fun provideActionPlanner(geminiManager: GeminiManager): ActionPlanner {
-        return GeminiActionPlanner(geminiManager, FallbackActionPlanner())
+    fun provideActionPlanner(geminiManager: GeminiManager): GeminiActionPlanner {
+        return GeminiActionPlanner(geminiManager)
     }
 
     @Provides @Singleton
@@ -94,17 +84,17 @@ object AgentModule {
     }
 
     @Provides @Singleton
-    fun provideClusterTopicAgent(geminiManager: GeminiManager): ClusterTopicAgent {
-        return GeminiClusterTopicAgent(geminiManager, FallbackClusterTopicAgent())
+    fun provideClusterTopicAgent(geminiManager: GeminiManager): GeminiClusterTopicAgent {
+        return GeminiClusterTopicAgent(geminiManager)
     }
 
     @Provides @Singleton
-    fun provideRefineAgent(geminiManager: GeminiManager): com.samsung.smartclipboard.domain.agent.RefineAgent {
+    fun provideRefineAgent(geminiManager: GeminiManager): GeminiRefineAgent {
         return GeminiRefineAgent(geminiManager)
     }
 
     @Provides @Singleton
-    fun providePurposeAnalyzer(geminiManager: GeminiManager): PurposeAnalyzer {
-        return GeminiPurposeAnalyzer(geminiManager, FallbackPurposeAnalyzer())
+    fun providePurposeAnalyzer(geminiManager: GeminiManager): GeminiPurposeAnalyzer {
+        return GeminiPurposeAnalyzer(geminiManager)
     }
 }

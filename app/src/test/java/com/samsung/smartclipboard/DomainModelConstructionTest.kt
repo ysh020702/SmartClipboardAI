@@ -1,5 +1,7 @@
 package com.samsung.smartclipboard
 
+import com.samsung.smartclipboard.domain.model.DataItem
+import com.samsung.smartclipboard.domain.model.DataItemType
 import com.samsung.smartclipboard.domain.model.*
 import org.junit.Assert.*
 import org.junit.Test

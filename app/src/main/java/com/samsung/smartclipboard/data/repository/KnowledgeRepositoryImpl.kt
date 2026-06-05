@@ -1,6 +1,6 @@
 package com.samsung.smartclipboard.data.repository
 
-import com.samsung.smartclipboard.data.source.local.KnowledgeDao
+import com.samsung.smartclipboard.database.dao.KnowledgeDao
 import com.samsung.smartclipboard.domain.repository.KnowledgeRepository
 import javax.inject.Inject
 import javax.inject.Singleton

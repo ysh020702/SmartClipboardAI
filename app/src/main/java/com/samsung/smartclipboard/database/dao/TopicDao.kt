@@ -1,14 +1,14 @@
-package com.samsung.smartclipboard.data.source.local
+package com.samsung.smartclipboard.database.dao
 
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
-import com.samsung.smartclipboard.data.model.DataItemEntity
-import com.samsung.smartclipboard.data.model.TopicActionEntity
-import com.samsung.smartclipboard.data.model.TopicAnalysisEntity
-import com.samsung.smartclipboard.data.model.TopicEntity
-import com.samsung.smartclipboard.data.model.TopicItemCrossRefEntity
+import com.samsung.smartclipboard.database.entity.DataItemEntity
+import com.samsung.smartclipboard.database.entity.TopicActionEntity
+import com.samsung.smartclipboard.database.entity.TopicAnalysisEntity
+import com.samsung.smartclipboard.database.entity.TopicEntity
+import com.samsung.smartclipboard.database.entity.TopicItemCrossRefEntity
 import kotlinx.coroutines.flow.Flow
 
 data class TopicSummaryRow(

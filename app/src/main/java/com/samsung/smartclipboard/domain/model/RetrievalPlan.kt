@@ -1,5 +1,7 @@
 package com.samsung.smartclipboard.domain.model
 
+import com.samsung.smartclipboard.domain.model.DataItemType
+
 /**
  * LLM TopicPlanner가 생성할 검색 계획 DTO.
  *

@@ -1,10 +1,10 @@
-package com.samsung.smartclipboard.data.source.local
+package com.samsung.smartclipboard.database.dao
 
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
-import com.samsung.smartclipboard.data.model.DataItemEntity
+import com.samsung.smartclipboard.database.entity.DataItemEntity
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -12,7 +12,7 @@ interface DataItemDao {
     @Query("SELECT * FROM data_items ORDER BY createdAt DESC")
     fun observeAll(): Flow<List<DataItemEntity>>
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.Companion.REPLACE)
     suspend fun insert(entity: DataItemEntity): Long
 
     @Query("DELETE FROM data_items WHERE id = :id")

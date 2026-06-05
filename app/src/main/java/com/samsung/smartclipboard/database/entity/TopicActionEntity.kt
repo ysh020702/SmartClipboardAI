@@ -1,9 +1,10 @@
-package com.samsung.smartclipboard.data.model
+package com.samsung.smartclipboard.database.entity
 
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import com.samsung.smartclipboard.database.entity.TopicAnalysisEntity
 
 @Entity(
     tableName = "topic_actions",
@@ -12,13 +13,13 @@ import androidx.room.PrimaryKey
             entity = TopicEntity::class,
             parentColumns = ["id"],
             childColumns = ["topicId"],
-            onDelete = ForeignKey.CASCADE
+            onDelete = ForeignKey.Companion.CASCADE
         ),
         ForeignKey(
             entity = TopicAnalysisEntity::class,
             parentColumns = ["id"],
             childColumns = ["analysisResultId"],
-            onDelete = ForeignKey.SET_NULL
+            onDelete = ForeignKey.Companion.SET_NULL
         )
     ],
     indices = [

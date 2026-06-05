@@ -1,16 +1,20 @@
-package com.samsung.smartclipboard.data.source.local
+package com.samsung.smartclipboard.database
 
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
-import com.samsung.smartclipboard.data.model.DataItemEntity
-import com.samsung.smartclipboard.data.model.KnowledgeEntity
-import com.samsung.smartclipboard.data.model.TopicActionEntity
-import com.samsung.smartclipboard.data.model.TopicAnalysisEntity
-import com.samsung.smartclipboard.data.model.TopicEntity
-import com.samsung.smartclipboard.data.model.TopicItemCrossRefEntity
+import com.samsung.smartclipboard.database.entity.KnowledgeEntity
+import com.samsung.smartclipboard.database.entity.TopicActionEntity
+import com.samsung.smartclipboard.database.entity.TopicAnalysisEntity
+import com.samsung.smartclipboard.database.entity.TopicEntity
+import com.samsung.smartclipboard.database.entity.TopicItemCrossRefEntity
+import com.samsung.smartclipboard.data.source.local.KeywordConverters
+import com.samsung.smartclipboard.database.dao.KnowledgeDao
+import com.samsung.smartclipboard.database.dao.TopicDao
+import com.samsung.smartclipboard.database.dao.DataItemDao
+import com.samsung.smartclipboard.database.entity.DataItemEntity
 
 @Database(
     entities = [
@@ -153,7 +157,7 @@ abstract class SmartClipboardDatabase : RoomDatabase() {
                 )
             }
         }
-        
+
         val MIGRATION_5_6 = object : Migration(5, 6) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL(

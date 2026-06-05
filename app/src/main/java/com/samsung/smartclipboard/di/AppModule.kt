@@ -2,10 +2,10 @@ package com.samsung.smartclipboard.di
 
 import android.content.Context
 import androidx.room.Room
-import com.samsung.smartclipboard.data.source.local.DataItemDao
-import com.samsung.smartclipboard.data.source.local.KnowledgeDao
-import com.samsung.smartclipboard.data.source.local.SmartClipboardDatabase
-import com.samsung.smartclipboard.data.source.local.TopicDao
+import com.samsung.smartclipboard.database.dao.DataItemDao
+import com.samsung.smartclipboard.database.dao.KnowledgeDao
+import com.samsung.smartclipboard.database.SmartClipboardDatabase
+import com.samsung.smartclipboard.database.dao.TopicDao
 import com.samsung.smartclipboard.data.repository.DataRepositoryImpl
 import com.samsung.smartclipboard.domain.repository.DataRepository
 import dagger.Binds

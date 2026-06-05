@@ -1,5 +1,7 @@
 package com.samsung.smartclipboard.domain.model
 
+import com.samsung.smartclipboard.domain.model.DataItem
+
 /**
  * 검색/추천된 DataItem wrapper.
  *

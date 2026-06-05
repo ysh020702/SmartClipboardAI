@@ -2,8 +2,9 @@ package com.samsung.smartclipboard.data.retrieval
 
 import com.samsung.smartclipboard.domain.model.DataCluster
 import com.samsung.smartclipboard.domain.model.DataItem
-import com.samsung.smartclipboard.domain.retrieval.DataClusterer
 import android.util.Log
+import com.samsung.smartclipboard.domain.retrieval.DataClusterer
+
 /**
  * Jaccard 유사도 + Union-Find 기반의 로컬 클러스터링 구현체.
  *

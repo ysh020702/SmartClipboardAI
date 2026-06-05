@@ -58,7 +58,7 @@ internal object GeminiPurposeJsonParser {
     /** purposeKeyword가 없을 경우 purpose에서 간단히 키워드 추출 (fallback) */
     private fun extractKeywordsFromPurpose(purpose: String): String {
         return purpose
-            .replace(Regex("[은는이가을를에의과와도에서로하])$"), "")
+            .replace(Regex("[은는이가을를에의과와도에서로하]$"), "")
             .split(Regex("[\\s,·]+"))
             .filter { it.length >= 2 }
             .take(7)

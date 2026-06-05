@@ -1,7 +1,19 @@
 package com.samsung.smartclipboard.presentation.main
 
 import android.net.Uri
-import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -15,14 +27,24 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
@@ -31,10 +53,10 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -42,16 +64,25 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
@@ -60,6 +91,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.samsung.smartclipboard.domain.model.DataItem
@@ -69,11 +102,18 @@ import com.samsung.smartclipboard.domain.model.TopicAction
 import com.samsung.smartclipboard.domain.model.TopicActionStatus
 import com.samsung.smartclipboard.domain.model.TopicActionType
 import com.samsung.smartclipboard.domain.model.TopicAnalysis
+import com.samsung.smartclipboard.presentation.agent.AgentSessionIntent
 import com.samsung.smartclipboard.presentation.agent.AgentSessionScreen
+import com.samsung.smartclipboard.presentation.agent.AgentSessionViewModel
+import com.samsung.smartclipboard.presentation.agent.ClusterSuggestionScreen
+import com.samsung.smartclipboard.presentation.agent.ClusterSuggestionViewModel
+import com.samsung.smartclipboard.ui.theme.AppColors
+import com.samsung.smartclipboard.ui.theme.BlueGradient
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import kotlin.text.format
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -100,8 +140,8 @@ fun MainScreen(
         }
     }
 
-    BackHandler(enabled = uiState.screenMode == MainScreenMode.TOPIC_DETAIL) {
-        onIntent(MainIntent.OpenTasks)
+    BackHandler(enabled = uiState.screenMode != MainScreenMode.HOME) {
+        onIntent(MainIntent.BackToHome)
     }
 
     if (uiState.pendingDeleteItemId != null) {
@@ -153,19 +193,22 @@ fun MainScreen(
     }
 
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = Color.White,
         topBar = {
-            MainTopBar(uiState = uiState, onIntent = onIntent)
+            UnifiedTopBar(uiState = uiState, onIntent = onIntent)
         },
         bottomBar = {
-            if (uiState.screenMode == MainScreenMode.DATA && uiState.isSelectionMode) {
+            if (uiState.screenMode == MainScreenMode.MANUAL_SELECT && uiState.isSelectionMode) {
                 SelectionActionBar(
                     selectedCount = uiState.selectedItemIds.size,
                     onCancel = { onIntent(MainIntent.ExitSelectionMode) },
-                    onNext = { onIntent(MainIntent.OpenHandoffSheet) }
+                    onNext = {
+                        onIntent(MainIntent.StartAgentWithManualSelection(
+                            uiState.handoffTitle,
+                            uiState.selectedItemIds.toList()
+                        ))
+                    }
                 )
-            } else if (uiState.screenMode != MainScreenMode.TOPIC_DETAIL) {
-                MainBottomBar(uiState = uiState, onIntent = onIntent)
             }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
@@ -176,17 +219,19 @@ fun MainScreen(
                 .padding(innerPadding)
         ) {
             when (uiState.screenMode) {
-                MainScreenMode.HOME -> DashboardHome(
-                    uiState = uiState,
-                    onIntent = onIntent,
-                    onRequestMediaPermission = onRequestMediaPermission
-                )
-
-                MainScreenMode.DATA -> DataBrowser(
+                MainScreenMode.HOME -> UnifiedHomeScreen(
                     uiState = uiState,
                     onIntent = onIntent
                 )
-                MainScreenMode.TASKS -> TasksHome(
+
+                MainScreenMode.AI_SEARCH -> AgentSessionScreen()
+
+                MainScreenMode.MANUAL_SELECT -> ManualSelectScreen(
+                    uiState = uiState,
+                    onIntent = onIntent
+                )
+
+                MainScreenMode.DATA_BROWSER -> DataBrowser(
                     uiState = uiState,
                     onIntent = onIntent
                 )
@@ -198,11 +243,650 @@ fun MainScreen(
                     onCreateCalendarDraft = onCreateCalendarDraft
                 )
 
-                MainScreenMode.AGENT -> AgentSessionScreen()
+                MainScreenMode.AGENT -> AgentSessionWithItemsScreen(
+                    topicQuery = uiState.handoffTitle,
+                    selectedItemIds = uiState.selectedItemIds.toList()
+                )
             }
         }
     }
 }
+
+// ---------------------------------------------------------------------------
+// Unified Top Bar
+// ---------------------------------------------------------------------------
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun UnifiedTopBar(
+    uiState: MainUiState,
+    onIntent: (MainIntent) -> Unit
+) {
+    val showBack = uiState.screenMode != MainScreenMode.HOME
+
+    TopAppBar(
+        navigationIcon = {
+            if (showBack) {
+                IconButton(onClick = { onIntent(MainIntent.BackToHome) }) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "뒤로"
+                    )
+                }
+            }
+        },
+        title = {
+            Text(
+                text = when (uiState.screenMode) {
+                    MainScreenMode.HOME -> "Smart Clipboard AI"
+                    MainScreenMode.AI_SEARCH -> "AI 찾기"
+                    MainScreenMode.MANUAL_SELECT -> if (uiState.isSelectionMode) "데이터 선택" else "직접 고르기"
+                    MainScreenMode.DATA_BROWSER -> "수집 데이터"
+                    MainScreenMode.TOPIC_DETAIL -> uiState.topics
+                        .firstOrNull { it.id == uiState.selectedTopicId }
+                        ?.title
+                        ?: "주제 상세"
+                    MainScreenMode.AGENT -> "AI 에이전트"
+                }
+            )
+        },
+        actions = {
+            when (uiState.screenMode) {
+                MainScreenMode.MANUAL_SELECT -> {
+                    if (uiState.isSelectionMode) {
+                        TextButton(onClick = { onIntent(MainIntent.ExitSelectionMode) }) {
+                            Text("취소")
+                        }
+                    } else if (uiState.totalCount > 0) {
+                        TextButton(onClick = { onIntent(MainIntent.EnterSelectionMode) }) {
+                            Text("선택")
+                        }
+                    }
+                }
+                MainScreenMode.DATA_BROWSER -> {
+                    if (uiState.totalCount > 0) {
+                        TextButton(onClick = { onIntent(MainIntent.RequestClearAll) }) {
+                            Text("전체 삭제", color = MaterialTheme.colorScheme.error)
+                        }
+                    }
+                }
+                MainScreenMode.TOPIC_DETAIL -> {
+                    if (uiState.selectedTopicItems.isNotEmpty()) {
+                        TextButton(
+                            onClick = { onIntent(MainIntent.RunSelectedTopicAnalysis) },
+                            enabled = !uiState.isRunningTopicAnalysis
+                        ) {
+                            Text("분석")
+                        }
+                    }
+                }
+                else -> {}
+            }
+        },
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = Color.White,
+            titleContentColor = AppColors.Slate800,
+            actionIconContentColor = AppColors.Blue,
+            navigationIconContentColor = AppColors.Blue
+        )
+    )
+}
+
+// ---------------------------------------------------------------------------
+// Unified Home Screen (AI 메뉴 상단 부분)
+// ---------------------------------------------------------------------------
+
+@Composable
+private fun UnifiedHomeScreen(
+    uiState: MainUiState,
+    onIntent: (MainIntent) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+    ) {
+        // Hero header card (AI 메뉴 위쪽 부분)
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(BlueGradient)
+                .padding(horizontal = 20.dp)
+                .padding(top = 24.dp, bottom = 28.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Icon(
+                Icons.Default.AutoAwesome,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(54.dp)
+            )
+
+            Spacer(Modifier.height(12.dp))
+
+            Text(
+                "SmartClipboardAI",
+                fontSize = 30.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = Color.White
+            )
+
+            Text(
+                "수집한 정보를 AI로 정리하고 실행합니다",
+                fontSize = 12.sp,
+                color = Color.White.copy(alpha = 0.72f)
+            )
+
+            Spacer(Modifier.height(36.dp))
+
+            // Main card
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = Color.Transparent
+                ),
+                shape = RoundedCornerShape(20.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .background(BlueGradient)
+                        .padding(20.dp)
+                ) {
+                    Text(
+                        "무엇을 정리할까요?",
+                        color = Color.White,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Text(
+                        "원하는 주제를 입력하거나 AI에게 맡겨보세요.",
+                        color = Color(0xFFC7D2FE).copy(alpha = 0.78f),
+                        fontSize = 11.sp
+                    )
+
+                    Spacer(Modifier.height(16.dp))
+
+                    TextField(
+                        value = uiState.topicQuery,
+                        onValueChange = { onIntent(MainIntent.UpdateTopicQuery(it)) },
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = {
+                            Text(
+                                "예: 회의 자료, 여행 링크, 일정 캡처",
+                                color = Color.White.copy(alpha = 0.55f),
+                                fontSize = 13.sp
+                            )
+                        },
+                        singleLine = true,
+                        shape = RoundedCornerShape(14.dp),
+                        colors = TextFieldDefaults.colors(
+                            focusedContainerColor = Color.White.copy(alpha = 0.14f),
+                            unfocusedContainerColor = Color.White.copy(alpha = 0.14f),
+                            focusedIndicatorColor = Color.Transparent,
+                            unfocusedIndicatorColor = Color.Transparent,
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White,
+                        ),
+                    )
+
+                    Spacer(Modifier.height(12.dp))
+
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(
+                            onClick = { onIntent(MainIntent.OpenAiSearch) },
+                            enabled = uiState.items.isNotEmpty(),
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(14.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color.White,
+                                contentColor = AppColors.Blue
+                            ),
+                        ) {
+                            Icon(
+                                Icons.Default.Psychology,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                "AI 찾기",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
+                        Button(
+                            onClick = { onIntent(MainIntent.OpenManualSelect) },
+                            enabled = uiState.items.isNotEmpty(),
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(14.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color.White.copy(alpha = 0.18f),
+                                contentColor = Color.White
+                            ),
+                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.28f)),
+                        ) {
+                            Text("직접 고르기", fontSize = 13.sp)
+                        }
+                    }
+
+                    Spacer(Modifier.height(8.dp))
+
+                    Button(
+                        onClick = { onIntent(MainIntent.OpenDataBrowserFromHome) },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color.White.copy(alpha = 0.08f),
+                            contentColor = Color(0xFFC7D2FE)
+                        ),
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
+                    ) {
+                        Text("수집 현황", fontSize = 12.sp)
+                        Spacer(Modifier.width(6.dp))
+                        Pill(
+                            "${uiState.totalCount}개",
+                            bg = Color.White.copy(alpha = 0.14f),
+                            color = Color.White.copy(alpha = 0.9f)
+                        )
+                    }
+                }
+            }
+        }
+
+        // Today collection summary
+        if (uiState.items.isNotEmpty()) {
+            Row(
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 24.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                DividerLine(Modifier.weight(1f))
+                Text(
+                    "오늘 ${uiState.totalCount}개의 항목을 수집했어요",
+                    modifier = Modifier.padding(horizontal = 12.dp),
+                    color = AppColors.Slate400,
+                    fontSize = 10.sp
+                )
+                DividerLine(Modifier.weight(1f))
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// AI Search Screen (AI 찾기 → 클러스터 주제 추천)
+// ---------------------------------------------------------------------------
+
+@Composable
+private fun AiSearchScreen(
+    uiState: MainUiState,
+    onIntent: (MainIntent) -> Unit
+) {
+    val clusterViewModel: ClusterSuggestionViewModel = hiltViewModel()
+    val clusterUiState by clusterViewModel.uiState.collectAsState()
+
+    Column(
+        modifier = Modifier.fillMaxSize()
+    ) {
+        // Compact header (not scrollable on its own)
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(BlueGradient)
+                .padding(horizontal = 20.dp)
+                .padding(top = 20.dp, bottom = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Icon(
+                    Icons.Default.AutoAwesome,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(22.dp)
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    "SmartClipboardAI",
+                    color = Color.White,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.ExtraBold
+                )
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = Color.White.copy(alpha = 0.10f)
+                ),
+                shape = RoundedCornerShape(20.dp),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.18f))
+            ) {
+                Column(
+                    modifier = Modifier
+                        .background(SolidColor(Color.Transparent))
+                        .padding(20.dp)
+                ) {
+                    Text(
+                        "무엇을 정리할까요?",
+                        color = Color.White,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        "원하는 주제를 입력하거나 AI에게 맡겨보세요.",
+                        color = Color(0xFFC7D2FE).copy(alpha = 0.78f),
+                        fontSize = 11.sp
+                    )
+
+                    Spacer(Modifier.height(16.dp))
+
+                    TextField(
+                        value = uiState.topicQuery,
+                        onValueChange = { onIntent(MainIntent.UpdateTopicQuery(it)) },
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = {
+                            Text(
+                                "예: 회의 자료, 여행 링크, 일정 캡처",
+                                color = Color.White.copy(alpha = 0.55f),
+                                fontSize = 13.sp
+                            )
+                        },
+                        singleLine = true,
+                        shape = RoundedCornerShape(14.dp),
+                        colors = TextFieldDefaults.colors(
+                            focusedContainerColor = Color.White.copy(alpha = 0.14f),
+                            unfocusedContainerColor = Color.White.copy(alpha = 0.14f),
+                            focusedIndicatorColor = Color.Transparent,
+                            unfocusedIndicatorColor = Color.Transparent,
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White,
+                        ),
+                    )
+
+                    Spacer(Modifier.height(12.dp))
+
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(
+                            onClick = { onIntent(MainIntent.OpenAiSearch) },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(14.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color.White,
+                                contentColor = AppColors.Blue
+                            ),
+                        ) {
+                            Icon(
+                                Icons.Default.Psychology,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Text("AI 찾기", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        }
+
+                        Button(
+                            onClick = { onIntent(MainIntent.OpenManualSelect) },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(14.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color.White.copy(alpha = 0.18f),
+                                contentColor = Color.White
+                            ),
+                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.28f)),
+                        ) {
+                            Text("직접 고르기", fontSize = 13.sp)
+                        }
+                    }
+                }
+            }
+        }
+
+        // Cluster suggestion section (AI 메뉴 아래쪽 부분)
+        // Use compactMode to avoid Scaffold-inside-Column sizing issues
+        ClusterSuggestionScreen(
+            uiState = clusterUiState,
+            onIntent = clusterViewModel::onIntent,
+            onTopicSelected = { suggestedTitle, clusterItemIds ->
+                onIntent(MainIntent.StartAgentWithCluster(suggestedTitle, clusterItemIds))
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f),
+            compactMode = true
+        )
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Manual Select Screen (직접 고르기 → 데이터 선택 + 주제 입력)
+// ---------------------------------------------------------------------------
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ManualSelectScreen(
+    uiState: MainUiState,
+    onIntent: (MainIntent) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+    ) {
+        // Topic input section
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface
+            )
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = "주제를 입력하세요",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "직접 주제를 정하고 데이터를 선택합니다.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.outline
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = uiState.handoffTitle,
+                    onValueChange = { onIntent(MainIntent.UpdateHandoffTitle(it)) },
+                    label = { Text("주제명") },
+                    placeholder = { Text("예: SmartClipboard UX 설계") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Data selection section
+        Text(
+            text = "${uiState.totalCount}개 전체 · 텍스트 ${uiState.textCount} · 링크 ${uiState.linkCount} · 이미지 ${uiState.imageCount} · 스크린샷 ${uiState.screenshotCount}",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.outline
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            MainFilter.entries.forEach { filter ->
+                FilterChip(
+                    selected = uiState.selectedFilter == filter,
+                    onClick = { onIntent(MainIntent.SelectFilter(filter)) },
+                    label = { Text(filter.displayName()) },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer
+                    )
+                )
+            }
+        }
+
+        if (uiState.isSelectionMode) {
+            Spacer(modifier = Modifier.height(12.dp))
+            SelectionSummaryCard(
+                selectedCount = uiState.selectedItemIds.size,
+                hiddenSelectedCount = 0,
+                onSelectVisible = { onIntent(MainIntent.SelectAllVisible) },
+                onClear = { onIntent(MainIntent.ClearSelection) }
+            )
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        when {
+            uiState.isLoading -> {
+                CircularProgressIndicator(
+                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                )
+            }
+
+            uiState.items.isEmpty() -> {
+                EmptyDataMessage(modifier = Modifier.weight(1f))
+            }
+
+            uiState.visibleItems.isEmpty() -> {
+                Text(
+                    text = "현재 필터에 맞는 데이터가 없어요.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .padding(24.dp)
+                )
+            }
+
+            else -> {
+                LazyColumn(modifier = Modifier.weight(1f)) {
+                    items(uiState.visibleItems) { item ->
+                        ItemCard(
+                            item = item,
+                            isSelected = item.id in uiState.selectedItemIds,
+                            isSelectionMode = true,
+                            onToggleSelect = { onIntent(MainIntent.ToggleItemSelection(item.id)) },
+                            onDelete = { onIntent(MainIntent.RequestDeleteItem(item.id)) }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Data Browser (수집 현황)
+// ---------------------------------------------------------------------------
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun DataBrowser(
+    uiState: MainUiState,
+    onIntent: (MainIntent) -> Unit
+) {
+    val selectedVisibleCount = uiState.visibleItems.count { it.id in uiState.selectedItemIds }
+    val hiddenSelectedCount = (uiState.selectedItemIds.size - selectedVisibleCount).coerceAtLeast(0)
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+    ) {
+        Text(
+            text = "${uiState.totalCount}개 전체 · 텍스트 ${uiState.textCount} · 링크 ${uiState.linkCount} · 이미지 ${uiState.imageCount} · 스크린샷 ${uiState.screenshotCount}",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.outline
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            MainFilter.entries.forEach { filter ->
+                FilterChip(
+                    selected = uiState.selectedFilter == filter,
+                    onClick = { onIntent(MainIntent.SelectFilter(filter)) },
+                    label = { Text(filter.displayName()) },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer
+                    )
+                )
+            }
+        }
+
+        if (uiState.isSelectionMode) {
+            Spacer(modifier = Modifier.height(12.dp))
+            SelectionSummaryCard(
+                selectedCount = uiState.selectedItemIds.size,
+                hiddenSelectedCount = hiddenSelectedCount,
+                onSelectVisible = { onIntent(MainIntent.SelectAllVisible) },
+                onClear = { onIntent(MainIntent.ClearSelection) }
+            )
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        when {
+            uiState.isLoading -> {
+                CircularProgressIndicator(
+                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                )
+            }
+
+            uiState.items.isEmpty() -> {
+                EmptyDataMessage(modifier = Modifier.weight(1f))
+            }
+
+            uiState.visibleItems.isEmpty() -> {
+                Text(
+                    text = "현재 필터에 맞는 데이터가 없어요.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .padding(24.dp)
+                )
+            }
+
+            else -> {
+                LazyColumn(modifier = Modifier.weight(1f)) {
+                    items(uiState.visibleItems) { item ->
+                        ItemCard(
+                            item = item,
+                            isSelected = item.id in uiState.selectedItemIds,
+                            isSelectionMode = uiState.isSelectionMode,
+                            onToggleSelect = { onIntent(MainIntent.ToggleItemSelection(item.id)) },
+                            onDelete = { onIntent(MainIntent.RequestDeleteItem(item.id)) }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Topic Pipeline Sheet
+// ---------------------------------------------------------------------------
 
 @Composable
 private fun TopicPipelineSheet(
@@ -276,9 +960,6 @@ private fun TopicPipelineSheet(
             Text("주제에만 추가")
         }
 
-        // TODO(agent-pipeline): Surface job id, progress, cancellation, and retry state here
-        // once the real AI Agent pipeline replaces the local heuristic analysis.
-
         TextButton(
             onClick = { onIntent(MainIntent.DismissHandoffSheet) },
             enabled = !uiState.isRunningTopicAnalysis,
@@ -289,613 +970,9 @@ private fun TopicPipelineSheet(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun MainTopBar(
-    uiState: MainUiState,
-    onIntent: (MainIntent) -> Unit
-) {
-    TopAppBar(
-        navigationIcon = {
-            if (uiState.screenMode == MainScreenMode.TOPIC_DETAIL) {
-                TextButton(onClick = { onIntent(MainIntent.OpenTasks) }) {
-                    Text("작업")
-                }
-            }
-        },
-        title = {
-            Text(
-                text = when (uiState.screenMode) {
-                    MainScreenMode.HOME -> "Smart Clipboard AI"
-                    MainScreenMode.DATA -> if (uiState.isSelectionMode) "데이터 선택" else "수집 데이터"
-                    MainScreenMode.TASKS -> "작업"
-                    MainScreenMode.TOPIC_DETAIL -> uiState.topics
-                        .firstOrNull { it.id == uiState.selectedTopicId }
-                        ?.title
-                        ?: "주제 상세"
-                    MainScreenMode.AGENT -> "AI 에이전트"
-                }
-            )
-        },
-        actions = {
-            if (uiState.screenMode == MainScreenMode.DATA) {
-                if (uiState.isSelectionMode) {
-                    TextButton(onClick = { onIntent(MainIntent.ExitSelectionMode) }) {
-                        Text("취소")
-                    }
-                } else if (uiState.totalCount > 0) {
-                    TextButton(onClick = { onIntent(MainIntent.EnterSelectionMode) }) {
-                        Text("선택")
-                    }
-                }
-            }
-
-            if (uiState.screenMode == MainScreenMode.DATA && uiState.totalCount > 0) {
-                TextButton(onClick = { onIntent(MainIntent.RequestClearAll) }) {
-                    Text("전체 삭제", color = MaterialTheme.colorScheme.error)
-                }
-            }
-
-            if (uiState.screenMode == MainScreenMode.TOPIC_DETAIL && uiState.selectedTopicItems.isNotEmpty()) {
-                TextButton(
-                    onClick = { onIntent(MainIntent.RunSelectedTopicAnalysis) },
-                    enabled = !uiState.isRunningTopicAnalysis
-                ) {
-                    Text("분석")
-                }
-            }
-        },
-        colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = MaterialTheme.colorScheme.background,
-            titleContentColor = MaterialTheme.colorScheme.onBackground,
-            actionIconContentColor = MaterialTheme.colorScheme.primary,
-            navigationIconContentColor = MaterialTheme.colorScheme.primary
-        )
-    )
-}
-
-@Composable
-private fun MainBottomBar(
-    uiState: MainUiState,
-    onIntent: (MainIntent) -> Unit
-) {
-    NavigationBar(
-        containerColor = MaterialTheme.colorScheme.surface,
-        tonalElevation = 0.dp
-    ) {
-        NavigationBarItem(
-            selected = uiState.screenMode == MainScreenMode.HOME,
-            onClick = { onIntent(MainIntent.OpenDashboard) },
-            icon = {
-                OneUiNavIcon(
-                    mode = MainScreenMode.HOME,
-                    selected = uiState.screenMode == MainScreenMode.HOME
-                )
-            },
-            label = { Text("홈") }
-        )
-        NavigationBarItem(
-            selected = uiState.screenMode == MainScreenMode.DATA,
-            onClick = { onIntent(MainIntent.OpenDataBrowser) },
-            icon = {
-                OneUiNavIcon(
-                    mode = MainScreenMode.DATA,
-                    selected = uiState.screenMode == MainScreenMode.DATA
-                )
-            },
-            label = { Text("데이터") }
-        )
-        NavigationBarItem(
-            selected = uiState.screenMode == MainScreenMode.TASKS ||
-                    uiState.screenMode == MainScreenMode.TOPIC_DETAIL,
-            onClick = { onIntent(MainIntent.OpenTasks) },
-            icon = {
-                OneUiNavIcon(
-                    mode = MainScreenMode.TASKS,
-                    selected = uiState.screenMode == MainScreenMode.TASKS ||
-                            uiState.screenMode == MainScreenMode.TOPIC_DETAIL
-                )
-            },
-            label = { Text("작업") }
-        )
-        NavigationBarItem(
-            selected = uiState.screenMode == MainScreenMode.AGENT,
-            onClick = { onIntent(MainIntent.OpenAgent) },
-            icon = {
-                OneUiNavIcon(
-                    mode = MainScreenMode.AGENT,
-                    selected = uiState.screenMode == MainScreenMode.AGENT
-                )
-            },
-            label = { Text("AI") }
-        )
-    }
-}
-
-@Composable
-private fun OneUiNavIcon(
-    mode: MainScreenMode,
-    selected: Boolean
-) {
-    val color = if (selected) {
-        MaterialTheme.colorScheme.primary
-    } else {
-        MaterialTheme.colorScheme.outline
-    }
-
-    Canvas(modifier = Modifier.size(22.dp)) {
-        val stroke = Stroke(width = 2.2.dp.toPx(), cap = StrokeCap.Round)
-        when (mode) {
-            MainScreenMode.HOME -> {
-                drawLine(
-                    color = color,
-                    start = Offset(size.width * 0.18f, size.height * 0.50f),
-                    end = Offset(size.width * 0.50f, size.height * 0.22f),
-                    strokeWidth = stroke.width,
-                    cap = StrokeCap.Round
-                )
-                drawLine(
-                    color = color,
-                    start = Offset(size.width * 0.50f, size.height * 0.22f),
-                    end = Offset(size.width * 0.82f, size.height * 0.50f),
-                    strokeWidth = stroke.width,
-                    cap = StrokeCap.Round
-                )
-                drawRoundRect(
-                    color = color,
-                    topLeft = Offset(size.width * 0.28f, size.height * 0.48f),
-                    size = Size(size.width * 0.44f, size.height * 0.36f),
-                    style = stroke
-                )
-            }
-
-            MainScreenMode.DATA -> {
-                repeat(3) { index ->
-                    val y = size.height * (0.25f + index * 0.25f)
-                    drawCircle(
-                        color = color,
-                        radius = 2.1.dp.toPx(),
-                        center = Offset(size.width * 0.24f, y)
-                    )
-                    drawLine(
-                        color = color,
-                        start = Offset(size.width * 0.38f, y),
-                        end = Offset(size.width * 0.82f, y),
-                        strokeWidth = stroke.width,
-                        cap = StrokeCap.Round
-                    )
-                }
-            }
-
-            MainScreenMode.TASKS, MainScreenMode.TOPIC_DETAIL -> {
-                drawRoundRect(
-                    color = color,
-                    topLeft = Offset(size.width * 0.22f, size.height * 0.20f),
-                    size = Size(size.width * 0.56f, size.height * 0.60f),
-                    style = stroke
-                )
-                drawLine(
-                    color = color,
-                    start = Offset(size.width * 0.34f, size.height * 0.42f),
-                    end = Offset(size.width * 0.46f, size.height * 0.54f),
-                    strokeWidth = stroke.width,
-                    cap = StrokeCap.Round
-                )
-                drawLine(
-                    color = color,
-                    start = Offset(size.width * 0.46f, size.height * 0.54f),
-                    end = Offset(size.width * 0.68f, size.height * 0.36f),
-                    strokeWidth = stroke.width,
-                    cap = StrokeCap.Round
-                )
-            }
-
-            MainScreenMode.AGENT -> {
-                drawCircle(
-                    color = color,
-                    radius = size.width * 0.28f,
-                    center = Offset(size.width * 0.50f, size.height * 0.42f)
-                )
-                drawLine(
-                    color = color,
-                    start = Offset(size.width * 0.42f, size.height * 0.42f),
-                    end = Offset(size.width * 0.35f, size.height * 0.42f),
-                    strokeWidth = stroke.width,
-                    cap = StrokeCap.Round
-                )
-                drawLine(
-                    color = color,
-                    start = Offset(size.width * 0.58f, size.height * 0.42f),
-                    end = Offset(size.width * 0.65f, size.height * 0.42f),
-                    strokeWidth = stroke.width,
-                    cap = StrokeCap.Round
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun DashboardHome(
-    uiState: MainUiState,
-    onIntent: (MainIntent) -> Unit,
-    onRequestMediaPermission: () -> Unit
-) {
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        item {
-            WorkStarterCard(uiState = uiState, onIntent = onIntent)
-        }
-
-        item {
-            TodayCollectionCard(uiState = uiState, onIntent = onIntent)
-        }
-
-        item {
-            RecommendationsSection(uiState = uiState, onIntent = onIntent)
-        }
-
-        item {
-            ScreenshotImportBanner(
-                uiState = uiState,
-                onIntent = onIntent,
-                onRequestMediaPermission = onRequestMediaPermission
-            )
-        }
-
-        item {
-            RecentPreviewSection(uiState = uiState, onIntent = onIntent)
-        }
-    }
-}
-
-@Composable
-private fun WorkStarterCard(
-    uiState: MainUiState,
-    onIntent: (MainIntent) -> Unit
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Text(
-                text = "무엇을 정리할까요?",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
-            )
-            OutlinedTextField(
-                value = uiState.workPrompt,
-                onValueChange = { onIntent(MainIntent.UpdateWorkPrompt(it)) },
-                placeholder = { Text("예: 어제 회의 자료, 여행 링크, 일정 캡처") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Button(
-                    onClick = { onIntent(MainIntent.FindWithAi) },
-                    enabled = uiState.items.isNotEmpty(),
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("AI가 찾아주기")
-                }
-                OutlinedButton(
-                    onClick = { onIntent(MainIntent.OpenManualSelection) },
-                    enabled = uiState.items.isNotEmpty(),
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("직접 고르기")
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun TodayCollectionCard(
-    uiState: MainUiState,
-    onIntent: (MainIntent) -> Unit
-) {
-    val todayItems = uiState.items.filter { isSameDay(it.createdAt, 0) }
-    val todayLinks = todayItems.count { it.type == DataItemType.LINK }
-    val todayTexts = todayItems.count { it.type == DataItemType.TEXT }
-    val todayScreenshots = todayItems.count { it.type == DataItemType.SCREENSHOT }
-
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "오늘 수집",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        text = "${todayItems.size}개 수집됨",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-                TextButton(onClick = { onIntent(MainIntent.OpenDataBrowser) }) {
-                    Text("전체 보기")
-                }
-            }
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "링크 $todayLinks · 메모 $todayTexts · 스크린샷 $todayScreenshots",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.outline
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-            Text(
-                text = todaySuggestionText(todayItems),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
-}
-
-@Composable
-private fun RecommendationsSection(
-    uiState: MainUiState,
-    onIntent: (MainIntent) -> Unit
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            Text(
-                text = "시작하기",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-
-            when {
-                uiState.items.size >= 2 -> {
-                    Text(
-                        text = "데이터를 선택해 Topic으로 만들고, AI가 분석과 액션 초안을 생성합니다.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.outline
-                    )
-                    OutlinedButton(onClick = { onIntent(MainIntent.OpenManualSelection) }) {
-                        Text("데이터 선택 → Topic 만들기")
-                    }
-                }
-                else -> {
-                    Text(
-                        text = "데이터가 조금 더 모이면 Topic 생성과 AI 분석을 시작할 수 있어요.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.outline
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun RecentPreviewSection(
-    uiState: MainUiState,
-    onIntent: (MainIntent) -> Unit
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = "최근 수집",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.weight(1f)
-                )
-                TextButton(onClick = { onIntent(MainIntent.OpenDataBrowser) }) {
-                    Text("전체 보기")
-                }
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            when {
-                uiState.isLoading -> {
-                    CircularProgressIndicator(
-                        modifier = Modifier.align(Alignment.CenterHorizontally)
-                    )
-                }
-
-                uiState.items.isEmpty() -> {
-                    Text(
-                        text = "공유 메뉴나 클립보드 타일로 데이터를 모아보세요.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.outline,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp)
-                    )
-                }
-
-                else -> {
-                    // Prior content from original kept
-                }
-            }
-        }
-    }
-}
-
 // ---------------------------------------------------------------------------
-// Rest of original file content preserved exactly as before (TasksHome, etc.)
+// Topic Detail Screen
 // ---------------------------------------------------------------------------
-
-@Composable
-private fun TasksHome(
-    uiState: MainUiState,
-    onIntent: (MainIntent) -> Unit
-) {
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(
-                        text = "모은 주제",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = "선택한 데이터를 주제별로 모아두고, 이후 요약/일정/알림 액션을 붙입니다.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.outline
-                    )
-                    OutlinedButton(
-                        onClick = { onIntent(MainIntent.OpenManualSelection) },
-                        enabled = uiState.items.isNotEmpty()
-                    ) {
-                        Text("데이터 골라 주제 만들기")
-                    }
-                }
-            }
-        }
-
-        item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Text(
-                        text = "주제 목록",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    if (uiState.topics.isEmpty()) {
-                        Text(
-                            text = "아직 저장된 주제가 없어요. 데이터를 선택한 뒤 '이 주제에 추가'를 눌러 첫 주제를 만들어보세요.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.outline
-                        )
-                    } else {
-                        uiState.topics.forEach { topic ->
-                            TopicRow(
-                                topic = topic,
-                                onClick = { onIntent(MainIntent.OpenTopicDetail(topic.id)) }
-                            )
-                        }
-                    }
-                }
-            }
-        }
-
-        item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(
-                        text = "자동 추가 후보",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = "Topic을 생성하고 AI 분석을 실행하면 액션 초안이 여기에 표시됩니다.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.outline
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun TopicRow(
-    topic: Topic,
-    onClick: () -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(vertical = 8.dp)
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = topic.title,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = "${formatTimestamp(topic.updatedAt)} 업데이트",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.outline
-                )
-            }
-            Text(
-                text = "${topic.itemCount}",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Bold
-            )
-        }
-    }
-}
 
 @Composable
 private fun TopicDetailScreen(
@@ -1004,6 +1081,10 @@ private fun TopicDetailScreen(
         }
     }
 }
+
+// ---------------------------------------------------------------------------
+// Shared Components
+// ---------------------------------------------------------------------------
 
 @Composable
 private fun TopicDetailHeader(
@@ -1218,7 +1299,6 @@ private fun TopicActionCard(
                             Text("캘린더 열기")
                         }
                     }
-
                     TopicActionType.SHARE_DRAFT,
                     TopicActionType.SUMMARY -> {
                         OutlinedButton(
@@ -1228,7 +1308,6 @@ private fun TopicActionCard(
                             Text("공유 초안")
                         }
                     }
-
                     TopicActionType.REMINDER,
                     TopicActionType.TODO -> {
                         OutlinedButton(
@@ -1241,8 +1320,6 @@ private fun TopicActionCard(
                     }
                 }
             }
-            // TODO(action-execution): Persist execution history and allow status changes
-            // such as executed, dismissed, and reopened from this card.
         }
     }
 }
@@ -1303,99 +1380,6 @@ private fun EmptyTopicState(
         if (actionLabel != null && onAction != null) {
             Button(onClick = onAction) {
                 Text(actionLabel)
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun DataBrowser(
-    uiState: MainUiState,
-    onIntent: (MainIntent) -> Unit
-) {
-    val selectedVisibleCount = uiState.visibleItems.count { it.id in uiState.selectedItemIds }
-    val hiddenSelectedCount = (uiState.selectedItemIds.size - selectedVisibleCount).coerceAtLeast(0)
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-    ) {
-        Text(
-            text = "${uiState.totalCount}개 전체 · 텍스트 ${uiState.textCount} · 링크 ${uiState.linkCount} · 이미지 ${uiState.imageCount} · 스크린샷 ${uiState.screenshotCount}",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.outline
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            MainFilter.entries.forEach { filter ->
-                FilterChip(
-                    selected = uiState.selectedFilter == filter,
-                    onClick = { onIntent(MainIntent.SelectFilter(filter)) },
-                    label = { Text(filter.displayName()) },
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer
-                    )
-                )
-            }
-        }
-
-        if (uiState.isSelectionMode) {
-            Spacer(modifier = Modifier.height(12.dp))
-            SelectionSummaryCard(
-                selectedCount = uiState.selectedItemIds.size,
-                hiddenSelectedCount = hiddenSelectedCount,
-                onSelectVisible = { onIntent(MainIntent.SelectAllVisible) },
-                onClear = { onIntent(MainIntent.ClearSelection) }
-            )
-        }
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        when {
-            uiState.isLoading -> {
-                CircularProgressIndicator(
-                    modifier = Modifier.align(Alignment.CenterHorizontally)
-                )
-            }
-
-            uiState.items.isEmpty() -> {
-                EmptyDataMessage(modifier = Modifier.weight(1f))
-            }
-
-            uiState.visibleItems.isEmpty() -> {
-                Text(
-                    text = "현재 필터에 맞는 데이터가 없어요.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f)
-                        .padding(24.dp)
-                )
-            }
-
-            else -> {
-                LazyColumn(
-                    modifier = Modifier.weight(1f)
-                ) {
-                    items(uiState.visibleItems) { item ->
-                        ItemCard(
-                            item = item,
-                            isSelected = item.id in uiState.selectedItemIds,
-                            isSelectionMode = uiState.isSelectionMode,
-                            onToggleSelect = { onIntent(MainIntent.ToggleItemSelection(item.id)) },
-                            onDelete = { onIntent(MainIntent.RequestDeleteItem(item.id)) }
-                        )
-                    }
-                }
             }
         }
     }
@@ -1504,103 +1488,6 @@ private fun EmptyDataMessage(modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun ScreenshotImportBanner(
-    uiState: MainUiState,
-    onIntent: (MainIntent) -> Unit,
-    onRequestMediaPermission: () -> Unit
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = "스크린샷 가져오기",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            if (uiState.showMediaPermissionBanner) {
-                Text(
-                    text = "이미지 접근을 허용하면 최근 스크린샷을 수집할 수 있어요.",
-                    style = MaterialTheme.typography.bodySmall
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Button(onClick = onRequestMediaPermission) {
-                    Text("권한 허용")
-                }
-            } else if (uiState.isMediaImporting) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "스크린샷을 살펴보는 중...",
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
-            } else {
-                Text(
-                    text = "최근 스크린샷을 다시 확인합니다.",
-                    style = MaterialTheme.typography.bodySmall
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Button(onClick = { onIntent(MainIntent.ImportRecentScreenshots) }) {
-                    Text("다시 스캔")
-                }
-            }
-            uiState.mediaImportMessage?.let { message ->
-                Spacer(modifier = Modifier.height(6.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = message,
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Medium,
-                        modifier = Modifier.weight(1f)
-                    )
-                    TextButton(onClick = { onIntent(MainIntent.DismissMediaImportMessage) }) {
-                        Text("닫기", style = MaterialTheme.typography.labelSmall)
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun CompactItemRow(item: DataItem) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp)
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = typeLabel(item.type),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.primary
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = item.title ?: contentPreview(item.effectiveContent, item.type, item.title),
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Medium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f)
-            )
-        }
-        Spacer(modifier = Modifier.height(2.dp))
-        Text(
-            text = "${sourceLabel(item.source)} · ${formatTimestamp(item.createdAt)}",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.outline
-        )
-    }
-}
-
-@Composable
 private fun ItemCard(
     item: DataItem,
     isSelected: Boolean,
@@ -1655,11 +1542,7 @@ private fun ItemCard(
                             .data(Uri.parse(item.content))
                             .crossfade(true)
                             .build(),
-                        contentDescription = when (item.type) {
-                            DataItemType.IMAGE -> "Image preview"
-                            DataItemType.SCREENSHOT -> "Screenshot preview"
-                            else -> "Preview"
-                        },
+                        contentDescription = "Preview",
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
                     )
@@ -1730,24 +1613,72 @@ private fun ItemCard(
     }
 }
 
-private fun todaySuggestionText(todayItems: List<DataItem>): String {
-    if (todayItems.isEmpty()) {
-        return "오늘 모인 데이터가 생기면 요약, 일정, 작업 연결 후보를 추천합니다."
+/**
+ * 직접 고르기에서 선택한 데이터를 AgentSession에 전달하여 동일한 파이프라인으로 진행.
+ * GeminiCluster 대신 사용자가 직접 주제와 데이터를 선택한 경우.
+ */
+@Composable
+private fun AgentSessionWithItemsScreen(
+    topicQuery: String,
+    selectedItemIds: List<Long>
+) {
+    val agentViewModel: AgentSessionViewModel = hiltViewModel()
+
+    LaunchedEffect(topicQuery, selectedItemIds) {
+        if (topicQuery.isNotBlank() && selectedItemIds.isNotEmpty()) {
+            agentViewModel.onIntent(
+                AgentSessionIntent.StartWithClusterItems(topicQuery, selectedItemIds)
+            )
+        }
     }
 
-    val hasDateLikeText = todayItems.any {
-        it.effectiveContent.contains(Regex("\\d{1,2}:\\d{2}|\\d{4}[-/]\\d{1,2}[-/]\\d{1,2}|오전|오후"))
-    }
-    val linkCount = todayItems.count { it.type == DataItemType.LINK }
-    val screenshotCount = todayItems.count { it.type == DataItemType.SCREENSHOT }
+    AgentSessionScreen(viewModel = agentViewModel)
+}
 
-    return when {
-        hasDateLikeText -> "날짜나 시간이 들어간 데이터가 있어 일정 초안으로 이어질 수 있어요."
-        screenshotCount >= 2 -> "스크린샷이 여러 개 모였어요. 관련 장면을 묶어 검토해보세요."
-        linkCount >= 2 -> "링크가 여러 개 모였어요. 리서치 노트로 정리하기 좋습니다."
-        else -> "필요한 데이터를 직접 고르거나 주제를 입력해 AI 후보 선택을 시작하세요."
+@Composable
+private fun AgentSessionPlaceholder() {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(
+            Icons.Default.AutoAwesome,
+            contentDescription = null,
+            tint = AppColors.Blue,
+            modifier = Modifier.size(48.dp)
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = "AI 에이전트",
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold
+        )
+        Text(
+            text = "AI 찾기 또는 직접 고르기로 시작하세요",
+            style = MaterialTheme.typography.bodyMedium,
+            color = AppColors.Slate400
+        )
     }
 }
+
+@Composable
+private fun Pill(text: String, bg: Color, color: Color) {
+    Box(Modifier.clip(CircleShape).background(bg).padding(horizontal = 7.dp, vertical = 3.dp)) {
+        Text(text, color = color, fontSize = 9.sp, maxLines = 1)
+    }
+}
+
+@Composable
+private fun DividerLine(modifier: Modifier = Modifier) {
+    Box(modifier.height(1.dp).background(AppColors.Slate200))
+}
+
+// ---------------------------------------------------------------------------
+// Helper functions
+// ---------------------------------------------------------------------------
 
 private fun typeLabel(type: DataItemType): String {
     return when (type) {
@@ -1831,13 +1762,3 @@ private fun TopicActionStatus.displayName(): String {
     }
 }
 
-private fun isSameDay(timeMillis: Long, dayOffset: Int): Boolean {
-    val target = Calendar.getInstance().apply {
-        add(Calendar.DAY_OF_YEAR, dayOffset)
-    }
-    val itemDay = Calendar.getInstance().apply {
-        timeInMillis = timeMillis
-    }
-    return target.get(Calendar.YEAR) == itemDay.get(Calendar.YEAR) &&
-            target.get(Calendar.DAY_OF_YEAR) == itemDay.get(Calendar.DAY_OF_YEAR)
-}

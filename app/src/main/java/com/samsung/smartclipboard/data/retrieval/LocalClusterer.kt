@@ -3,7 +3,7 @@ package com.samsung.smartclipboard.data.retrieval
 import com.samsung.smartclipboard.domain.model.DataCluster
 import com.samsung.smartclipboard.domain.model.DataItem
 import com.samsung.smartclipboard.domain.retrieval.DataClusterer
-
+import android.util.Log
 /**
  * Jaccard 유사도 + Union-Find 기반의 로컬 클러스터링 구현체.
  *
@@ -14,7 +14,7 @@ class LocalClusterer : DataClusterer {
 
     companion object {
         private const val MAX_ITEMS = 300
-        private const val SIMILARITY_THRESHOLD = 0.18f
+        private const val SIMILARITY_THRESHOLD = 0.4f
         private const val MAX_CLUSTERS = 10
         private const val MAX_TOKENS_PER_ITEM = 50
 
@@ -26,6 +26,7 @@ class LocalClusterer : DataClusterer {
     }
 
     override suspend fun cluster(items: List<DataItem>): List<DataCluster> {
+        Log.d("aaa","clustering start")
         if (items.isEmpty()) return emptyList()
 
         // 최근순 최대 300개
@@ -33,10 +34,12 @@ class LocalClusterer : DataClusterer {
             .sortedByDescending { it.createdAt }
             .take(MAX_ITEMS)
 
-        // 토큰화
+        // 토큰화 (purposeKeyword가 있으면 추가 토큰으로 포함)
         val inputs = limited.map { item ->
-            val tokens = tokenize(buildSearchText(item))
-            ClusterInput(item.id, item.type.name, item.source.orEmpty(), tokens, item.createdAt)
+            val textTokens = tokenize(buildSearchText(item))
+            val purposeTokens = tokenizePurposeKeyword(item.purposeKeyword)
+            var mergedTokens = purposeTokens
+            ClusterInput(item.id, item.type.name, item.source.orEmpty(), mergedTokens, item.createdAt)
         }
 
         if (inputs.isEmpty()) return emptyList()
@@ -117,6 +120,21 @@ class LocalClusterer : DataClusterer {
             .filter { it.length >= 2 && it !in STOP_WORDS }
             .toSet()
             .take(MAX_TOKENS_PER_ITEM)
+            .toSet()
+    }
+
+    /**
+     * purposeKeyword(콤마 구분 문자열)를 토큰 셋으로 변환.
+     * purposeKeyword는 Gemini가 이미 핵심 키워드로 추출한 값이므로
+     * 클러스터링 유사도에서 높은 가중치를 갖는다.
+     */
+    private fun tokenizePurposeKeyword(purposeKeyword: String?): Set<String> {
+        if (purposeKeyword.isNullOrBlank()) return emptySet()
+        return purposeKeyword
+            .lowercase()
+            .split(Regex("[,·]+"))
+            .map { it.trim() }
+            .filter { it.length >= 2 && it !in STOP_WORDS }
             .toSet()
     }
 

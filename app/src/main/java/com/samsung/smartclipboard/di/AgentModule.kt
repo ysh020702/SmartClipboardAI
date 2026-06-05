@@ -4,10 +4,13 @@ import android.content.Context
 import com.samsung.smartclipboard.data.agent.FallbackActionPlanner
 import com.samsung.smartclipboard.data.agent.FallbackClusterTopicAgent
 import com.samsung.smartclipboard.data.agent.FallbackItemRecommendationAgent
+import com.samsung.smartclipboard.data.agent.FallbackPurposeAnalyzer
 import com.samsung.smartclipboard.data.agent.FallbackTopicPlanner
 import com.samsung.smartclipboard.data.gemini.GeminiActionPlanner
 import com.samsung.smartclipboard.data.gemini.GeminiClusterTopicAgent
+import com.samsung.smartclipboard.data.gemini.GeminiClusterer
 import com.samsung.smartclipboard.data.gemini.GeminiItemRecommendationAgent
+import com.samsung.smartclipboard.data.gemini.GeminiPurposeAnalyzer
 import com.samsung.smartclipboard.data.gemini.GeminiTopicPlanner
 import com.samsung.smartclipboard.data.retrieval.LocalCandidateItemRanker
 import com.samsung.smartclipboard.data.retrieval.LocalClusterer
@@ -20,6 +23,7 @@ import com.samsung.smartclipboard.domain.agent.ClusterTopicAgent
 import com.samsung.smartclipboard.domain.agent.ItemRecommendationAgent
 import com.samsung.smartclipboard.domain.agent.TopicPlanner
 import com.samsung.smartclipboard.domain.ai.GeminiManager
+import com.samsung.smartclipboard.domain.ai.PurposeAnalyzer
 import com.samsung.smartclipboard.domain.repository.DataRepository
 import com.samsung.smartclipboard.domain.retrieval.CandidateItemRanker
 import com.samsung.smartclipboard.domain.retrieval.DataClusterer
@@ -79,8 +83,13 @@ object AgentModule {
     }
 
     @Provides @Singleton
-    fun provideDataClusterer(): DataClusterer {
+    fun provideLocalClusterer(): LocalClusterer {
         return LocalClusterer()
+    }
+
+    @Provides @Singleton
+    fun provideDataClusterer(geminiManager: GeminiManager, localClusterer: LocalClusterer): DataClusterer {
+        return GeminiClusterer(geminiManager, localClusterer)
     }
 
     @Provides @Singleton
@@ -91,5 +100,10 @@ object AgentModule {
     @Provides @Singleton
     fun provideRefineAgent(geminiManager: GeminiManager): com.samsung.smartclipboard.domain.agent.RefineAgent {
         return com.samsung.smartclipboard.data.gemini.GeminiRefineAgent(geminiManager)
+    }
+
+    @Provides @Singleton
+    fun providePurposeAnalyzer(geminiManager: GeminiManager): PurposeAnalyzer {
+        return GeminiPurposeAnalyzer(geminiManager, FallbackPurposeAnalyzer())
     }
 }

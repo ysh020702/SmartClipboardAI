@@ -16,8 +16,9 @@ enum class MainFilter {
 
 enum class MainScreenMode {
     HOME,
-    DATA,
-    TASKS,
+    AI_SEARCH,
+    MANUAL_SELECT,
+    DATA_BROWSER,
     TOPIC_DETAIL,
     AGENT
 }
@@ -30,6 +31,7 @@ enum class TopicDetailTab {
 
 data class MainUiState(
     val screenMode: MainScreenMode = MainScreenMode.HOME,
+    val topicQuery: String = "",
     val workPrompt: String = "",
     val items: List<DataItem> = emptyList(),
     val visibleItems: List<DataItem> = emptyList(),
@@ -111,4 +113,12 @@ sealed interface MainIntent {
     data object DismissHandoffMessage : MainIntent
     data class HandoffActionCompleted(val message: String, val isSuccess: Boolean = true) : MainIntent
     data object OpenAgent : MainIntent
+    // New unified navigation intents
+    data object OpenAiSearch : MainIntent
+    data object OpenManualSelect : MainIntent
+    data object OpenDataBrowserFromHome : MainIntent
+    data object BackToHome : MainIntent
+    data class UpdateTopicQuery(val query: String) : MainIntent
+    data class StartAgentWithCluster(val topicQuery: String, val clusterItemIds: List<Long>) : MainIntent
+    data class StartAgentWithManualSelection(val topicQuery: String, val selectedItemIds: List<Long>) : MainIntent
 }

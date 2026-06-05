@@ -246,7 +246,7 @@ class MainViewModel @Inject constructor(
 
                     it.copy(
 
-                        screenMode = MainScreenMode.DATA,
+                        screenMode = MainScreenMode.DATA_BROWSER,
 
                         isSelectionMode = false,
 
@@ -272,7 +272,7 @@ class MainViewModel @Inject constructor(
 
                     it.copy(
 
-                        screenMode = MainScreenMode.TASKS,
+                        screenMode = MainScreenMode.HOME,
 
                         isSelectionMode = false,
 
@@ -324,7 +324,7 @@ class MainViewModel @Inject constructor(
 
                     it.copy(
 
-                        screenMode = MainScreenMode.DATA,
+                        screenMode = MainScreenMode.MANUAL_SELECT,
 
                         isSelectionMode = true
 
@@ -376,7 +376,7 @@ class MainViewModel @Inject constructor(
 
                     it.copy(
 
-                        screenMode = MainScreenMode.DATA,
+                        screenMode = MainScreenMode.MANUAL_SELECT,
 
                         isSelectionMode = true,
 
@@ -616,7 +616,7 @@ class MainViewModel @Inject constructor(
 
                     it.copy(
 
-                        screenMode = MainScreenMode.DATA,
+                        screenMode = MainScreenMode.MANUAL_SELECT,
 
                         isSelectionMode = true
 
@@ -800,7 +800,7 @@ class MainViewModel @Inject constructor(
 
                             it.copy(
 
-                                screenMode = MainScreenMode.TASKS,
+                                screenMode = MainScreenMode.TOPIC_DETAIL,
 
                                 showHandoffSheet = false,
 
@@ -1086,6 +1086,82 @@ class MainViewModel @Inject constructor(
 
                 }
 
+            }
+
+            // New unified navigation intents
+            is MainIntent.OpenAiSearch -> {
+                _uiState.update {
+                    it.copy(
+                        screenMode = MainScreenMode.AI_SEARCH,
+                        isSelectionMode = false
+                    )
+                }
+            }
+
+            is MainIntent.OpenManualSelect -> {
+                _uiState.update {
+                    it.copy(
+                        screenMode = MainScreenMode.MANUAL_SELECT,
+                        isSelectionMode = true,
+                        selectedItemIds = emptySet()
+                    )
+                }
+            }
+
+            is MainIntent.OpenDataBrowserFromHome -> {
+                _uiState.update {
+                    it.copy(
+                        screenMode = MainScreenMode.DATA_BROWSER,
+                        isSelectionMode = false,
+                        selectedItemIds = emptySet()
+                    )
+                }
+            }
+
+            is MainIntent.BackToHome -> {
+                _selectedTopicId.value = null
+                _uiState.update {
+                    it.copy(
+                        screenMode = MainScreenMode.HOME,
+                        isSelectionMode = false,
+                        selectedItemIds = emptySet(),
+                        selectedTopicId = null,
+                        selectedTopicItems = emptyList(),
+                        selectedTopicAnalysis = emptyList(),
+                        selectedTopicActions = emptyList()
+                    )
+                }
+            }
+
+            is MainIntent.UpdateTopicQuery -> {
+                _uiState.update { it.copy(topicQuery = intent.query) }
+            }
+
+            is MainIntent.StartAgentWithCluster -> {
+                val topicQuery = intent.topicQuery
+                val clusterItemIds = intent.clusterItemIds
+                _uiState.update {
+                    it.copy(
+                        screenMode = MainScreenMode.AGENT,
+                        isSelectionMode = false,
+                        selectedItemIds = clusterItemIds.toSet(),
+                        handoffTitle = topicQuery,
+                        topicQuery = topicQuery
+                    )
+                }
+            }
+
+            is MainIntent.StartAgentWithManualSelection -> {
+                val topicQuery = intent.topicQuery
+                val selectedItemIds = intent.selectedItemIds
+                _uiState.update {
+                    it.copy(
+                        screenMode = MainScreenMode.AGENT,
+                        handoffTitle = topicQuery,
+                        selectedItemIds = selectedItemIds.toSet(),
+                        isSelectionMode = false
+                    )
+                }
             }
 
         }
